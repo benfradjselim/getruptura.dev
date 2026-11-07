@@ -69,6 +69,15 @@ h1 em{font-style:normal;color:var(--accent)}
 .k{color:#79c0ff}.s{color:#a5d6ff}.n{color:#3fb950;font-weight:600}.c{color:#8b949e}
 .result-cap{font-size:13px;color:var(--muted);margin-top:12px;text-align:center}
 
+.demo{border-radius:14px;overflow:hidden;border:1px solid var(--line);box-shadow:0 20px 50px -20px rgba(0,0,0,.45);background:#0d1117;aspect-ratio:3/2}
+.demo video{display:block;width:100%;height:100%;object-fit:cover}
+.ticker{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg-soft);padding:14px 0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.ticker .track{display:flex;width:max-content;animation:scroll 60s linear infinite}
+.ticker span{white-space:nowrap;padding:0 28px;font-size:14px;color:var(--muted);font-family:"JetBrains Mono",ui-monospace,monospace}
+.ticker b{font-weight:500}.ticker b.p{color:var(--green)}.ticker b.d{color:var(--red)}
+.ticker:hover .track{animation-play-state:paused}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ticker .track{animation:none}}
 /* sections */
 section{padding:80px 0}
 section.soft{background:var(--bg-soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -147,24 +156,23 @@ footer a{color:var(--muted)}
       </div>
     </div>
     <div>
-      <div class="result" role="img" aria-label="Example Ruptura result: a predicted memory saturation 626 seconds ahead">
-        <div class="bar"><i></i><i></i><i></i></div>
-<pre><span class="c">GET /api/v2/failures</span>
-{
-  <span class="k">"target"</span>: <span class="s">"demo-shop/Deployment/step-leak"</span>,
-  <span class="k">"failureMode"</span>: <span class="s">"saturation"</span>,
-  <span class="k">"kind"</span>: <span class="s">"predicted"</span>,
-  <span class="k">"state"</span>: <span class="s">"degraded"</span>,
-  <span class="k">"etaSeconds"</span>: <span class="n">626</span>,
-  <span class="k">"recommendedAction"</span>: <span class="s">"Review the memory limit
-    or restart the pod before it is killed"</span>,
-  <span class="k">"evidence"</span>: [<span class="s">"Memory at 75% of its limit"</span>]
-}</pre>
+      <div class="demo">
+        <video autoplay muted loop playsinline preload="metadata" poster="poster.jpg" aria-label="Demo: Ruptura spots a leaking pod, predicts the OOM kill 10 minutes ahead and fires an Alertmanager alert">
+          <source src="demo.webm" type="video/webm">
+          <source src="demo.mp4" type="video/mp4">
+        </video>
       </div>
-      <p class="result-cap">One structured result per failure, ready for your alerts and your tools.</p>
+      <p class="result-cap">From a leaking pod to an Alertmanager alert, 10 minutes before the OOM kill.</p>
     </div>
   </div>
 </header>
+
+<div class="ticker" aria-hidden="true">
+  <div class="track">
+    <span><b class="p">saturation</b> predicted · 626 s left</span><span><b class="d">oom_killed</b> detected</span><span><b class="p">release_regression</b> predicted · roll back</span><span><b class="d">crash_loop</b> detected</span><span><b class="p">replica_divergence</b> predicted · pod named</span><span><b class="d">rollout_stuck</b> detected</span><span><b class="p">recurrent_failure</b> predicted</span><span><b class="d">cpu_throttling</b> detected</span><span><b class="d">startup_stuck</b> detected</span><span><b class="d">replicas_unavailable</b> detected</span>
+    <span><b class="p">saturation</b> predicted · 626 s left</span><span><b class="d">oom_killed</b> detected</span><span><b class="p">release_regression</b> predicted · roll back</span><span><b class="d">crash_loop</b> detected</span><span><b class="p">replica_divergence</b> predicted · pod named</span><span><b class="d">rollout_stuck</b> detected</span><span><b class="p">recurrent_failure</b> predicted</span><span><b class="d">cpu_throttling</b> detected</span><span><b class="d">startup_stuck</b> detected</span><span><b class="d">replicas_unavailable</b> detected</span>
+  </div>
+</div>
 
 <section class="soft">
   <div class="wrap">
