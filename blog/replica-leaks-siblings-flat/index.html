@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The one replica that leaks while its siblings stay flat | Ruptura</title><meta name="description" content="Averages and global thresholds miss a single leaking replica and a release that leaks faster than the one before it. Here is how to catch both before the OOM kill."><link rel="canonical" href="https://getruptura.dev/blog/replica-leaks-siblings-flat/">
+<meta property="og:title" content="The one replica that leaks while its siblings stay flat"><meta property="og:description" content="Averages and global thresholds miss a single leaking replica and a release that leaks faster than the one before it. Here is how to catch both before the OOM kill."><meta property="og:url" content="https://getruptura.dev/blog/replica-leaks-siblings-flat/"><meta property="og:type" content="article"><meta property="og:image" content="https://getruptura.dev/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/favicon.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "The one replica that leaks while its siblings stay flat", "description": "Averages and global thresholds miss a single leaking replica and a release that leaks faster than the one before it. Here is how to catch both before the OOM kill.", "author": {"@type": "Person", "name": "Selim Benfradj"}, "datePublished": "2026-11-08", "publisher": {"@type": "Organization", "name": "Ruptura", "url": "https://getruptura.dev"}, "mainEntityOfPage": "https://getruptura.dev/blog/replica-leaks-siblings-flat/", "image": "https://getruptura.dev/og.png"}</script>
+<style>
+:root{--bg:#fff;--fg:#0d1117;--muted:#57606a;--line:#d0d7de;--acc:#0969da;--soft:#f6f8fa}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--line:#30363d;--acc:#58a6ff;--soft:#161b22}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--acc)}nav{border-bottom:1px solid var(--line)}nav .w{display:flex;align-items:center;gap:10px;height:60px}
+nav a.brand{display:flex;gap:8px;align-items:center;font-weight:700;color:var(--fg);text-decoration:none}nav img{width:26px;height:26px}nav .r{margin-left:auto;display:flex;gap:18px;font-size:15px}nav .r a{color:var(--muted);text-decoration:none}
+.w{max-width:760px;margin:0 auto;padding:0 20px}h1{font-size:clamp(30px,5vw,42px);line-height:1.15;letter-spacing:-.02em;margin:40px 0 10px}
+.meta{color:var(--muted);font-size:14px;margin-bottom:30px}h2{margin-top:40px;font-size:26px;letter-spacing:-.01em}
+pre,.codehilite{border-radius:10px;overflow-x:auto;font-size:13.5px;line-height:1.5}.codehilite pre{padding:16px;margin:0}
+code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.92em}p code,li code{background:var(--soft);padding:2px 6px;border-radius:6px}
+.yt{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000;margin:20px 0}.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+code,pre{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}main pre,.codehilite{max-width:100%;overflow-x:auto}main{overflow-wrap:anywhere;min-width:0}table{border-collapse:collapse;width:100%;font-size:15px;margin:16px 0;display:block;overflow-x:auto}th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}th{background:var(--soft)}td,th{overflow-wrap:normal;word-break:normal}table code{white-space:nowrap}hr{border:0;border-top:1px solid var(--line);margin:40px 0}footer{color:var(--muted);font-size:14px;padding:40px 0 60px}
+.cta{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:20px;margin:30px 0}
+</style></head><body>
+<nav><div class="w"><a class="brand" href="/"><img src="/logo.png" alt="">Ruptura</a><div class="r"><a href="/blog/">Blog</a><a href="https://docs.getruptura.dev/">Docs</a><a data-goatcounter-click="blog-github" href="https://github.com/benfradjselim/ruptura">GitHub</a></div></div></nav>
+<main class="w"><article><h1>The one replica that leaks while its siblings stay flat</h1><div class="meta">Selim Benfradj · November 8, 2026</div><div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/sD1mMTWQgvY?rel=0" title="Ruptura in 4 minutes" loading="lazy" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+
+<p><em>Prefer video? The 4-minute overview above covers the whole idea.</em></p>
+<p>Your Deployment runs five replicas. Four of them hold steady at 300 MiB. One climbs a little every minute.</p>
+<p>On your dashboard, the average memory of the Deployment barely moves. Your alert on "memory above 90% of the limit" stays silent. Then that one pod is <code>OOMKilled</code>, restarts, and starts climbing again.</p>
+<p>This is one of the failures that averages and global thresholds are built to miss. Here is how <a href="https://github.com/benfradjselim/ruptura">Ruptura</a>, an open-source operator for Kubernetes and OpenShift, catches it, along with its close cousin: the release that leaks.</p>
+<h2>Why averages hide the leak</h2>
+<p>A Deployment-level metric is usually a sum or an average across pods. One replica growing while the others stay flat moves that number by a fifth of the growth. By the time it is visible, the pod is already close to its limit.</p>
+<p>Looking at each pod against a fixed threshold does not help either: a pod at 70% of its limit can be perfectly healthy if that is where it always sits.</p>
+<p>What matters is the <strong>rate</strong>, compared with the right reference.</p>
+<h2>Replica divergence: compare a pod with its siblings</h2>
+<p>Replicas of the same version run the same code on the same kind of traffic. They should grow at roughly the same rate. Ruptura uses that as the reference:</p>
+<ul>
+<li>It looks at versions with <strong>at least 3 replicas</strong>.</li>
+<li>When <strong>one replica grows at least 3 times faster than the others for 5 minutes</strong>, it raises a <code>replica_divergence</code> failure.</li>
+<li>The result <strong>names the pod</strong>, and is reported <strong>up to 2 hours ahead</strong> of the limit.</li>
+<li>When all replicas grow together, it stays silent: that is load, not a leak in one pod.</li>
+</ul>
+<h2>Release regression: compare a version with the one it replaced</h2>
+<p>The second pattern shows up right after a rollout. The new version leaks, every replica of it, while the previous version never did.</p>
+<ul>
+<li>After a <strong>6 minute warm-up</strong>, Ruptura compares how fast the new version grows toward its memory limit with how fast the version it replaced did.</li>
+<li>When the new version grows <strong>at least 3 times faster, for 5 minutes</strong>, it raises a <code>release_regression</code> failure.</li>
+<li>It is reported <strong>up to 2 hours ahead</strong>, with <strong>both rates</strong> as evidence and a <strong>roll back</strong> as the recommended action.</li>
+</ul>
+<p>That turns "memory looks high since this morning" into "the release you shipped at 9:40 leaks three times faster than the one before it; roll it back".</p>
+<h2>What you get</h2>
+<p>Each failure is one structured result, with the target, the failure mode, whether it is predicted or detected, the time left and the evidence. Ruptura sends it to your Alertmanager, so it follows the routes, silences and receivers you already use. On OpenShift it can use the cluster Alertmanager directly.</p>
+<p>Both checks above are <strong>predictions</strong>: they fire before the pod is killed. Ruptura keeps those separate from <strong>detections</strong> such as <code>oom_killed</code> or <code>crash_loop</code>, which report what is already happening.</p>
+<h2>Try it</h2>
+<p>Locally, without a cluster:</p>
+<div class="codehilite" style="background: #0d1117"><pre style="line-height: 125%;"><span></span><code>git<span style="color: #6E7681"> </span>clone<span style="color: #6E7681"> </span>https://github.com/benfradjselim/ruptura
+<span style="color: #E6EDF3">cd</span><span style="color: #6E7681"> </span>ruptura
+docker<span style="color: #6E7681"> </span>compose<span style="color: #6E7681"> </span>up<span style="color: #6E7681"> </span>--build
+</code></pre></div>
+
+<p>On Kubernetes or OpenShift, the operator installs with two commands: see <a href="https://github.com/benfradjselim/ruptura#getting-started">Getting started</a>. The full list of failure modes and their rules is in <a href="https://docs.getruptura.dev/failures/">failures.md</a>.</p>
+<p>Ruptura is open source (Apache 2.0) and still early. If you run Kubernetes or OpenShift with Prometheus, I am looking for teams to try it and tell me what is missing: <a href="https://github.com/benfradjselim/ruptura/issues/new?template=early-adopter.yml">become an early adopter</a>. And if it is useful to you, a star on <a href="https://github.com/benfradjselim/ruptura">GitHub</a> helps others find it.</p><div class="cta"><b>Try Ruptura</b><br>Open source, for Kubernetes and OpenShift. <a data-goatcounter-click="blog-cta" href="/">getruptura.dev</a> · <a href="https://github.com/benfradjselim/ruptura">★ GitHub</a></div></article></main>
+<footer class="w">© 2026 Ruptura · Apache 2.0 · <a href="/">getruptura.dev</a></footer>
+<script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body></html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Predictive failure alerts in the OpenShift cluster Alertmanager | Ruptura</title><meta name="description" content="Ruptura sends predicted and detected workload failures to the OpenShift cluster Alertmanager, so they follow the routes, silences and receivers your team already maintains."><link rel="canonical" href="https://getruptura.dev/blog/openshift-cluster-alertmanager-predictive-alerts/">
+<meta property="og:title" content="Predictive failure alerts in the OpenShift cluster Alertmanager"><meta property="og:description" content="Ruptura sends predicted and detected workload failures to the OpenShift cluster Alertmanager, so they follow the routes, silences and receivers your team already maintains."><meta property="og:url" content="https://getruptura.dev/blog/openshift-cluster-alertmanager-predictive-alerts/"><meta property="og:type" content="article"><meta property="og:image" content="https://getruptura.dev/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/favicon.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Predictive failure alerts in the OpenShift cluster Alertmanager", "description": "Ruptura sends predicted and detected workload failures to the OpenShift cluster Alertmanager, so they follow the routes, silences and receivers your team already maintains.", "author": {"@type": "Person", "name": "Selim Benfradj"}, "datePublished": "2026-11-08", "publisher": {"@type": "Organization", "name": "Ruptura", "url": "https://getruptura.dev"}, "mainEntityOfPage": "https://getruptura.dev/blog/openshift-cluster-alertmanager-predictive-alerts/", "image": "https://getruptura.dev/og.png"}</script>
+<style>
+:root{--bg:#fff;--fg:#0d1117;--muted:#57606a;--line:#d0d7de;--acc:#0969da;--soft:#f6f8fa}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--line:#30363d;--acc:#58a6ff;--soft:#161b22}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--acc)}nav{border-bottom:1px solid var(--line)}nav .w{display:flex;align-items:center;gap:10px;height:60px}
+nav a.brand{display:flex;gap:8px;align-items:center;font-weight:700;color:var(--fg);text-decoration:none}nav img{width:26px;height:26px}nav .r{margin-left:auto;display:flex;gap:18px;font-size:15px}nav .r a{color:var(--muted);text-decoration:none}
+.w{max-width:760px;margin:0 auto;padding:0 20px}h1{font-size:clamp(30px,5vw,42px);line-height:1.15;letter-spacing:-.02em;margin:40px 0 10px}
+.meta{color:var(--muted);font-size:14px;margin-bottom:30px}h2{margin-top:40px;font-size:26px;letter-spacing:-.01em}
+pre,.codehilite{border-radius:10px;overflow-x:auto;font-size:13.5px;line-height:1.5}.codehilite pre{padding:16px;margin:0}
+code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.92em}p code,li code{background:var(--soft);padding:2px 6px;border-radius:6px}
+.yt{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000;margin:20px 0}.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+code,pre{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}main pre,.codehilite{max-width:100%;overflow-x:auto}main{overflow-wrap:anywhere;min-width:0}table{border-collapse:collapse;width:100%;font-size:15px;margin:16px 0;display:block;overflow-x:auto}th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}th{background:var(--soft)}td,th{overflow-wrap:normal;word-break:normal}table code{white-space:nowrap}hr{border:0;border-top:1px solid var(--line);margin:40px 0}footer{color:var(--muted);font-size:14px;padding:40px 0 60px}
+.cta{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:20px;margin:30px 0}
+</style></head><body>
+<nav><div class="w"><a class="brand" href="/"><img src="/logo.png" alt="">Ruptura</a><div class="r"><a href="/blog/">Blog</a><a href="https://docs.getruptura.dev/">Docs</a><a data-goatcounter-click="blog-github" href="https://github.com/benfradjselim/ruptura">GitHub</a></div></div></nav>
+<main class="w"><article><h1>Predictive failure alerts in the OpenShift cluster Alertmanager</h1><div class="meta">Selim Benfradj · November 8, 2026</div><div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/sD1mMTWQgvY?rel=0" title="Ruptura in 4 minutes" loading="lazy" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+
+<p><em>Prefer video? The 4-minute overview above covers the whole idea.</em></p>
+<p>On OpenShift, platform alerts already have a home: the cluster Alertmanager in <code>openshift-monitoring</code>, with routes, silences and receivers that the platform team maintains. Any new alerting tool that ships its own notification system creates a second place to configure, a second place to silence, and a second pager.</p>
+<p><a href="https://github.com/benfradjselim/ruptura">Ruptura</a>, an open-source operator that predicts workload failures, takes the other route: it sends its results to the Alertmanager you already run. Here is how that works on OpenShift, and what the alerts look like.</p>
+<h2>One resource, one channel</h2>
+<p>Ruptura is configured with a single custom resource, <code>RupturaInstance</code>. Pointing it at the cluster Alertmanager takes one channel:</p>
+<div class="codehilite" style="background: #0d1117"><pre style="line-height: 125%;"><span></span><code><span style="color: #7EE787">apiVersion</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">ruptura.io/v1alpha1</span>
+<span style="color: #7EE787">kind</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">RupturaInstance</span>
+<span style="color: #7EE787">metadata</span><span style="color: #E6EDF3">:</span>
+<span style="color: #6E7681">  </span><span style="color: #7EE787">name</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">shop</span>
+<span style="color: #6E7681">  </span><span style="color: #7EE787">namespace</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">ruptura-demo</span>
+<span style="color: #7EE787">spec</span><span style="color: #E6EDF3">:</span>
+<span style="color: #6E7681">  </span><span style="color: #7EE787">level</span><span style="color: #E6EDF3">:</span>
+<span style="color: #6E7681">    </span><span style="color: #7EE787">scope</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">workload</span>
+<span style="color: #6E7681">    </span><span style="color: #7EE787">selector</span><span style="color: #E6EDF3">:</span>
+<span style="color: #6E7681">      </span><span style="color: #7EE787">matchLabels</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #E6EDF3">{</span><span style="color: #7EE787">team</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #79C0FF">shop</span><span style="color: #E6EDF3">}</span>
+<span style="color: #6E7681">  </span><span style="color: #7EE787">alerting</span><span style="color: #E6EDF3">:</span>
+<span style="color: #6E7681">    </span><span style="color: #7EE787">channels</span><span style="color: #E6EDF3">:</span>
+<span style="color: #6E7681">      </span><span style="color: #E6EDF3">-</span><span style="color: #6E7681"> </span><span style="color: #7EE787">name</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">cluster</span>
+<span style="color: #6E7681">        </span><span style="color: #7EE787">alertmanager</span><span style="color: #E6EDF3">:</span>
+<span style="color: #6E7681">          </span><span style="color: #7EE787">url</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">https://alertmanager-main.openshift-monitoring.svc:9094</span>
+<span style="color: #6E7681">          </span><span style="color: #7EE787">serviceAccountToken</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">true</span>
+</code></pre></div>
+
+<p>On OpenShift you do not even need to give it a Prometheus URL: without <code>input.prometheus</code>, the engine reads the cluster Thanos querier with its own service account.</p>
+<h2>What the operator does for you</h2>
+<p>With <code>serviceAccountToken: true</code>:</p>
+<ul>
+<li>The operator binds the role <code>monitoring-alertmanager-edit</code> in <code>openshift-monitoring</code> to the engine's service account.</li>
+<li>The engine sends that token <strong>only</strong> to the URL of this channel, and trusts the OpenShift service CA.</li>
+</ul>
+<p>That is the whole integration. No extra receiver, no webhook bridge, no second dashboard. One rule to remember: never set <code>serviceAccountToken</code> on a channel that points to an Alertmanager outside the cluster.</p>
+<h2>What an alert looks like</h2>
+<p>Every minute, an instance sends its active failures to each channel. An alert ends 3 minutes after the failure stops being reported. Each alert carries labels you can route on:</p>
+<table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>alertname</code></td>
+<td><code>RupturaSaturation</code>, <code>RupturaCrashLoop</code></td>
+</tr>
+<tr>
+<td><code>severity</code></td>
+<td><code>critical</code> or <code>warning</code></td>
+</tr>
+<tr>
+<td><code>namespace</code></td>
+<td><code>demo-shop</code></td>
+</tr>
+<tr>
+<td><code>target</code></td>
+<td><code>demo-shop/Deployment/step-leak</code></td>
+</tr>
+<tr>
+<td><code>kind</code></td>
+<td><code>predicted</code> or <code>detected</code></td>
+</tr>
+<tr>
+<td><code>level</code></td>
+<td><code>workload</code></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>summary</code> annotation holds the recommended action, for example "Review the memory limit or restart the pod before it is killed", and <code>state</code> holds the failure state.</p>
+<h2>Why this matters in practice</h2>
+<p>Because the alerts land in the cluster Alertmanager, everything your team already set up applies to them:</p>
+<ul>
+<li><strong>Routes</strong>: send <code>namespace="demo-shop"</code> to the shop team, as you do for every other alert.</li>
+<li><strong>Silences</strong>: silence a noisy target during a maintenance window from the same console.</li>
+<li><strong>Inhibition</strong>: the standard OpenShift inhibition rule applies, so a <code>critical</code> alert hides <code>warning</code> alerts with the same <code>alertname</code> in the same namespace.</li>
+<li><strong>The <code>kind</code> label</strong>: route <code>kind="predicted"</code> to a channel the team reads during the day, and keep the pager for <code>kind="detected"</code>. A prediction gives you time; a detection does not.</li>
+</ul>
+<h2>Try it</h2>
+<p>Install the operator:</p>
+<div class="codehilite" style="background: #0d1117"><pre style="line-height: 125%;"><span></span><code>oc<span style="color: #6E7681"> </span>apply<span style="color: #6E7681"> </span>-f<span style="color: #6E7681"> </span>https://raw.githubusercontent.com/benfradjselim/ruptura/main/install/operator.yaml
+oc<span style="color: #6E7681"> </span>-n<span style="color: #6E7681"> </span>ruptura-system<span style="color: #6E7681"> </span>rollout<span style="color: #6E7681"> </span>status<span style="color: #6E7681"> </span>deploy/ruptura-operator
+</code></pre></div>
+
+<p>Then create a <code>RupturaInstance</code> like the one above and check that it reaches <code>Running</code>:</p>
+<div class="codehilite" style="background: #0d1117"><pre style="line-height: 125%;"><span></span><code>oc<span style="color: #6E7681"> </span>get<span style="color: #6E7681"> </span>rupturainstance<span style="color: #6E7681"> </span>-A
+</code></pre></div>
+
+<p>The full field reference is in the <a href="https://docs.getruptura.dev/rupturainstance/">RupturaInstance docs</a>, and the alerting options, including any non-OpenShift Alertmanager, are in <a href="https://docs.getruptura.dev/alerting/">Alerting</a>.</p>
+<p>Ruptura is open source (Apache 2.0) and still early, not yet recommended for production. If you run OpenShift, I would love your feedback on how the alerts fit your routing: <a href="https://github.com/benfradjselim/ruptura/issues/new?template=early-adopter.yml">become an early adopter</a>.</p><div class="cta"><b>Try Ruptura</b><br>Open source, for Kubernetes and OpenShift. <a data-goatcounter-click="blog-cta" href="/">getruptura.dev</a> · <a href="https://github.com/benfradjselim/ruptura">★ GitHub</a></div></article></main>
+<footer class="w">© 2026 Ruptura · Apache 2.0 · <a href="/">getruptura.dev</a></footer>
+<script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body></html>
