@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruptura — Red Hat Summit Paris</title>
+<meta name="description" content="Ruptura prédit les pannes Kubernetes et OpenShift avant qu'elles arrivent. Open source. Devenez design partner de Ruptura Autopilot.">
+<meta property="og:title" content="Ruptura — sachez ce qui va tomber, avant vos utilisateurs">
+<meta property="og:description" content="Observabilité prédictive open source pour OpenShift et Kubernetes.">
+<meta property="og:image" content="https://getruptura.dev/og.png">
+<link rel="icon" type="image/png" href="../favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d1117;--soft:#161b22;--line:#30363d;--fg:#e6edf3;--muted:#8b949e;--acc:#58a6ff;--green:#3fb950;--red:#f85149;--amber:#d29922}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--acc)}
+.wrap{max-width:640px;margin:0 auto;padding:0 18px}
+header{padding:22px 0 8px;display:flex;align-items:center;gap:10px}
+header img{width:30px;height:30px} header b{font-size:19px}
+header span{margin-left:auto;font-size:12px;color:var(--acc);background:#0d2a4a;padding:4px 10px;border-radius:99px;font-weight:600}
+h1{font-size:32px;line-height:1.12;letter-spacing:-.02em;margin:18px 0 12px;font-weight:800}
+h1 em{font-style:normal;color:var(--acc)}
+.lead{color:var(--muted);font-size:17px;margin:0 0 22px}
+.step{display:flex;align-items:center;gap:10px;margin:30px 0 12px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.step i{font-style:normal;display:inline-flex;width:24px;height:24px;border-radius:50%;background:#0d2a4a;color:var(--acc);align-items:center;justify-content:center;font-size:12px}
+.yt{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000}
+.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.pts{list-style:none;padding:0;margin:0}
+.pts li{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.pts b{display:block;font-size:16px;margin-bottom:2px} .pts span{color:var(--muted);font-size:14.5px}
+.cmd{position:relative;background:#010409;border:1px solid var(--line);border-radius:10px;padding:12px 90px 12px 14px;margin-bottom:10px;font-family:"JetBrains Mono",monospace;font-size:12.5px;overflow-x:auto;white-space:pre}
+.cmd button{position:absolute;top:8px;right:8px;background:var(--soft);color:var(--fg);border:1px solid var(--line);border-radius:6px;font-size:12px;padding:4px 8px;font-family:Inter,sans-serif}
+.note{font-size:13.5px;color:var(--muted)}
+.btn{display:block;text-align:center;text-decoration:none;font-weight:700;font-size:16px;padding:15px;border-radius:10px;margin-bottom:12px}
+.b1{background:var(--acc);color:#fff} .b2{border:1px solid var(--line);color:var(--fg)}
+.ap{background:linear-gradient(180deg,#14233a,#0f1722);border:1px solid #1f4b80;border-radius:14px;padding:20px;margin-top:8px}
+.ap h2{margin:0 0 6px;font-size:22px} .ap p{color:var(--muted);margin:0 0 16px;font-size:15px}
+footer{padding:30px 0 40px;color:var(--muted);font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><img src="../logo.png" alt=""><b>Ruptura</b><span>Red Hat Summit · Paris</span></header>
+
+<h1>Sachez ce qui va tomber, <em>quand et pourquoi</em>, avant vos utilisateurs.</h1>
+<p class="lead">Ruptura est un opérateur open source pour OpenShift et Kubernetes. Il lit vos métriques et annonce les pannes avant qu'elles arrivent : le temps restant, la preuve, et quoi faire.</p>
+
+<div class="step"><i>1</i>Ruptura en 4 minutes</div>
+<div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/sD1mMTWQgvY?rel=0" title="Ruptura in 4 minutes" loading="lazy" allow="encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></div>
+
+<div class="step"><i>2</i>Pourquoi c'est fait pour OpenShift</div>
+<ul class="pts">
+<li><b>Dans l'Alertmanager du cluster</b><span>Les pannes prédites suivent vos routes, silences et receivers existants.</span></li>
+<li><b>Une seule ressource, un opérateur</b><span>Pas de base externe. Compatible Pod Security « restricted ».</span></li>
+<li><b>Ce qu'un seuil ne voit pas</b><span>Le replica qui fuit seul, la release qui fuit 3× plus vite que la précédente, avec qui tombe avec elle.</span></li>
+</ul>
+
+<div class="step"><i>3</i>L'essayer en 2 commandes</div>
+<div class="cmd"><button onclick="cp(this)">Copier</button>oc apply -f https://raw.githubusercontent.com/benfradjselim/ruptura/main/install/operator.yaml</div>
+<div class="cmd"><button onclick="cp(this)">Copier</button>oc -n ruptura-system rollout status deploy/ruptura-operator</div>
+<p class="note">Puis créez une ressource RupturaInstance : <a data-goatcounter-click="summit-docs" href="https://docs.getruptura.dev/install/">guide d'installation</a>.</p>
+
+<div class="step"><i>4</i>Rejoignez-nous</div>
+<a class="btn b1" data-goatcounter-click="summit-star" href="https://github.com/benfradjselim/ruptura">★ Star sur GitHub</a>
+<div class="ap">
+  <h2>Ruptura Autopilot</h2>
+  <p>L'édition entreprise de Ruptura arrive. Nous cherchons quelques équipes OpenShift pour la construire avec nous, en design partners : accès anticipé, échanges directs avec l'équipe, et vos besoins en tête de la roadmap.</p>
+  <a class="btn b1" data-goatcounter-click="summit-design-partner" href="mailto:contact@getruptura.dev?subject=Design%20partner%20Ruptura%20Autopilot%20-%20Red%20Hat%20Summit%20Paris&body=Bonjour%20Selim%2C%0A%0AJe%20vous%20ai%20rencontr%C3%A9%20au%20Red%20Hat%20Summit.%0A%0ASoci%C3%A9t%C3%A9%20%3A%0AR%C3%B4le%20%3A%0ANombre%20de%20clusters%20OpenShift%2FKubernetes%20%3A%0AVotre%20panne%20la%20plus%20p%C3%A9nible%20%3A%0A">Devenir design partner</a>
+  <a class="btn b2" data-goatcounter-click="summit-early-adopter" href="https://github.com/benfradjselim/ruptura/issues/new?template=early-adopter.yml">Tester la version open source</a>
+</div>
+
+<footer>Selim Benfradj, créateur de Ruptura · <a href="https://getruptura.dev/?utm_campaign=summit">getruptura.dev</a></footer>
+</div>
+<script>function cp(b){const t=b.parentNode.childNodes[1].textContent.trim();navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>{b.textContent="Copié";setTimeout(()=>b.textContent="Copier",1500)})}</script>
+<script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
