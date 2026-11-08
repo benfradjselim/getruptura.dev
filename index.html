@@ -78,6 +78,8 @@ h1 em{font-style:normal;color:var(--accent)}
 .ticker:hover .track{animation-play-state:paused}
 @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.ticker .track{animation:none}}
+.yt{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#000;max-width:960px}
+.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 /* sections */
 section{padding:80px 0}
 section.soft{background:var(--bg-soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -135,6 +137,7 @@ footer a{color:var(--muted)}
   <div class="wrap">
     <a class="brand" href="#"><img src="logo.png" alt="">Ruptura</a>
     <div class="links">
+      <a href="#video">Video</a>
       <a href="#how">How it works</a>
       <a href="#failures">Failures</a>
       <a href="#install">Install</a>
@@ -174,6 +177,17 @@ footer a{color:var(--muted)}
   </div>
 </div>
 
+
+<section id="video" style="padding-bottom:40px">
+  <div class="wrap">
+    <h2>Ruptura in 4 minutes</h2>
+    <p class="sub">The problem with threshold alerts, what Ruptura tells you instead, and where it is going.</p>
+    <div class="yt">
+      <iframe src="https://www.youtube-nocookie.com/embed/sD1mMTWQgvY?rel=0" title="Predict Kubernetes failures before they happen: Ruptura in 4 minutes" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    </div>
+    <p style="margin-top:14px;font-size:15px;color:var(--muted)"><a data-goatcounter-click="youtube-watch" href="https://youtu.be/sD1mMTWQgvY">Watch on YouTube</a> and subscribe for new failure modes as they ship.</p>
+  </div>
+</section>
 <section class="soft">
   <div class="wrap">
     <h2>Threshold alerts fire too late.</h2>
