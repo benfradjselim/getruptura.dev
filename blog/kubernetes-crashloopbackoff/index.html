@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kubernetes CrashLoopBackOff: the 7 real causes and how to fix them | Ruptura</title><meta name="description" content="What CrashLoopBackOff means, how to read the exit code, the seven usual causes (including OpenShift permissions), and Prometheus alerts that catch it."><link rel="canonical" href="https://getruptura.dev/blog/kubernetes-crashloopbackoff/">
+<meta property="og:title" content="Kubernetes CrashLoopBackOff: the 7 real causes and how to fix them"><meta property="og:description" content="What CrashLoopBackOff means, how to read the exit code, the seven usual causes (including OpenShift permissions), and Prometheus alerts that catch it."><meta property="og:url" content="https://getruptura.dev/blog/kubernetes-crashloopbackoff/"><meta property="og:type" content="article"><meta property="og:image" content="https://getruptura.dev/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/favicon.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Kubernetes CrashLoopBackOff: the 7 real causes and how to fix them", "description": "What CrashLoopBackOff means, how to read the exit code, the seven usual causes (including OpenShift permissions), and Prometheus alerts that catch it.", "author": {"@type": "Person", "name": "Selim Benfradj"}, "datePublished": "2026-11-09", "publisher": {"@type": "Organization", "name": "Ruptura", "url": "https://getruptura.dev"}, "mainEntityOfPage": "https://getruptura.dev/blog/kubernetes-crashloopbackoff/", "image": "https://getruptura.dev/og.png"}</script>
+<style>
+:root{--bg:#fff;--fg:#0d1117;--muted:#57606a;--line:#d0d7de;--acc:#0969da;--soft:#f6f8fa}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--line:#30363d;--acc:#58a6ff;--soft:#161b22}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--acc)}nav{border-bottom:1px solid var(--line)}nav .w{display:flex;align-items:center;gap:10px;height:60px}
+nav a.brand{display:flex;gap:8px;align-items:center;font-weight:700;color:var(--fg);text-decoration:none}nav img{width:26px;height:26px}nav .r{margin-left:auto;display:flex;gap:18px;font-size:15px}nav .r a{color:var(--muted);text-decoration:none}
+.w{max-width:760px;margin:0 auto;padding:0 20px}h1{font-size:clamp(30px,5vw,42px);line-height:1.15;letter-spacing:-.02em;margin:40px 0 10px}
+.meta{color:var(--muted);font-size:14px;margin-bottom:30px}h2{margin-top:40px;font-size:26px;letter-spacing:-.01em}
+pre,.codehilite{border-radius:10px;overflow-x:auto;font-size:13.5px;line-height:1.5}.codehilite pre{padding:16px;margin:0}
+code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.92em}p code,li code{background:var(--soft);padding:2px 6px;border-radius:6px}
+.yt{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000;margin:20px 0}.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+code,pre{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}main pre,.codehilite{max-width:100%;overflow-x:auto}main{overflow-wrap:anywhere;min-width:0}table{border-collapse:collapse;width:100%;font-size:15px;margin:16px 0;display:block;overflow-x:auto}th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}th{background:var(--soft)}td,th{overflow-wrap:normal;word-break:normal}table code{white-space:nowrap}hr{border:0;border-top:1px solid var(--line);margin:40px 0}footer{color:var(--muted);font-size:14px;padding:40px 0 60px}
+.cta{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:20px;margin:30px 0}
+</style></head><body>
+<nav><div class="w"><a class="brand" href="/"><img src="/logo.png" alt="">Ruptura</a><div class="r"><a href="/blog/">Blog</a><a href="https://docs.getruptura.dev/">Docs</a><a data-goatcounter-click="blog-github" href="https://github.com/benfradjselim/ruptura">GitHub</a></div></div></nav>
+<main class="w"><article><h1>Kubernetes CrashLoopBackOff: the 7 real causes and how to fix them</h1><div class="meta">Selim Benfradj · November 9, 2026 · 5 min read</div><p><code>CrashLoopBackOff</code> is not an error in itself. It is Kubernetes telling you that a container keeps exiting, and that the kubelet is now waiting longer and longer before restarting it: 10 seconds, then 20, 40, and so on, capped at 5 minutes. The backoff resets once the container has run cleanly for 10 minutes.</p>
+<p>So the real question is always: <strong>why does the container exit?</strong> This guide gives you the seven usual causes, a five-minute diagnosis, and an alert that catches a crash loop before your users report it.</p>
+<h2>Start with the exit code</h2>
+<div class="codehilite" style="background: #0d1117"><pre style="line-height: 125%;"><span></span><code>kubectl<span style="color: #6E7681"> </span>describe<span style="color: #6E7681"> </span>pod<span style="color: #6E7681"> </span>&lt;pod&gt;<span style="color: #6E7681"> </span>-n<span style="color: #6E7681"> </span>&lt;namespace&gt;
+</code></pre></div>
+
+<p>Look at <code>Last State</code> for the crashing container:</p>
+<table>
+<thead>
+<tr>
+<th>Exit code</th>
+<th>Meaning</th>
+<th>Usual cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code> (or another small number)</td>
+<td>The application exited with an error</td>
+<td>Bad config, missing env var or secret, failed startup check</td>
+</tr>
+<tr>
+<td><code>137</code></td>
+<td>Killed with <code>SIGKILL</code></td>
+<td>OOM kill (<code>Reason: OOMKilled</code>), or a failing liveness probe</td>
+</tr>
+<tr>
+<td><code>139</code></td>
+<td>Segmentation fault</td>
+<td>Native crash, incompatible library</td>
+</tr>
+<tr>
+<td><code>143</code></td>
+<td>Terminated with <code>SIGTERM</code></td>
+<td>Stopped from outside, often by a probe or a rollout</td>
+</tr>
+</tbody>
+</table>
+<p>Then read the logs <strong>of the previous run</strong>, not the current one, which has often just started:</p>
+<div class="codehilite" style="background: #0d1117"><pre style="line-height: 125%;"><span></span><code>kubectl<span style="color: #6E7681"> </span>logs<span style="color: #6E7681"> </span>&lt;pod&gt;<span style="color: #6E7681"> </span>-n<span style="color: #6E7681"> </span>&lt;namespace&gt;<span style="color: #6E7681"> </span>-c<span style="color: #6E7681"> </span>&lt;container&gt;<span style="color: #6E7681"> </span>--previous
+</code></pre></div>
+
+<h2>The seven usual causes</h2>
+<p><strong>1. Missing or wrong configuration.</strong> A required environment variable, ConfigMap key or Secret is absent or misspelled. The logs of the previous run usually say so in the first lines.</p>
+<p><strong>2. A dependency is not reachable at startup.</strong> The database, the message broker or an API is down, and the application exits instead of retrying.</p>
+<p><strong>3. A liveness probe that is too aggressive.</strong> The application needs 40 seconds to start, the probe gives it 10, and the kubelet kills it before it is ready. Look for <code>Liveness probe failed</code> in the events, and use a <code>startupProbe</code> for slow starters.</p>
+<p><strong>4. Out of memory on every run.</strong> The container is OOM killed (exit code <code>137</code>, reason <code>OOMKilled</code>), restarts, and is killed again. See <a href="https://getruptura.dev/blog/kubernetes-oomkilled-exit-code-137/">Kubernetes OOMKilled (exit code 137)</a>.</p>
+<p><strong>5. Wrong command or image.</strong> A typo in <code>command</code> or <code>args</code>, or an image built for another CPU architecture (<code>exec format error</code> in the logs).</p>
+<p><strong>6. Permissions on OpenShift.</strong> OpenShift runs containers with an arbitrary user ID by default. An image that expects to run as root, or to write to a directory owned by root, fails at startup with <code>Permission denied</code>. Make the writable paths group-writable for the root group (GID 0), or write to a mounted volume.</p>
+<p><strong>7. The process simply finishes.</strong> A container whose main process exits successfully (exit code <code>0</code>) is still restarted under <code>restartPolicy: Always</code>. If it is a one-off task, it belongs in a <code>Job</code>.</p>
+<h2>Get alerted, with Prometheus</h2>
+<p>With kube-state-metrics, this rule fires when a container is waiting in <code>CrashLoopBackOff</code>:</p>
+<div class="codehilite" style="background: #0d1117"><pre style="line-height: 125%;"><span></span><code><span style="color: #E6EDF3">-</span><span style="color: #6E7681"> </span><span style="color: #7EE787">alert</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">ContainerCrashLooping</span>
+<span style="color: #6E7681">  </span><span style="color: #7EE787">expr</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #E6EDF3">|</span>
+<span style="color: #6E7681">    </span><span style="color: #79C0FF; font-weight: bold">max by (namespace, pod, container) (</span>
+<span style="color: #6E7681">      </span><span style="color: #79C0FF; font-weight: bold">kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}</span>
+<span style="color: #6E7681">    </span><span style="color: #79C0FF; font-weight: bold">) == 1</span>
+<span style="color: #6E7681">  </span><span style="color: #7EE787">for</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">5m</span>
+<span style="color: #6E7681">  </span><span style="color: #7EE787">labels</span><span style="color: #E6EDF3">:</span>
+<span style="color: #6E7681">    </span><span style="color: #7EE787">severity</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">warning</span>
+</code></pre></div>
+
+<p>And this one catches repeated restarts even between two backoff states:</p>
+<div class="codehilite" style="background: #0d1117"><pre style="line-height: 125%;"><span></span><code><span style="color: #E6EDF3">-</span><span style="color: #6E7681"> </span><span style="color: #7EE787">alert</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">ContainerRestartingOften</span>
+<span style="color: #6E7681">  </span><span style="color: #7EE787">expr</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #E6EDF3">|</span>
+<span style="color: #6E7681">    </span><span style="color: #79C0FF; font-weight: bold">max by (namespace, pod, container) (</span>
+<span style="color: #6E7681">      </span><span style="color: #79C0FF; font-weight: bold">increase(kube_pod_container_status_restarts_total[30m])</span>
+<span style="color: #6E7681">    </span><span style="color: #79C0FF; font-weight: bold">) &gt;= 3</span>
+<span style="color: #6E7681">  </span><span style="color: #7EE787">labels</span><span style="color: #E6EDF3">:</span>
+<span style="color: #6E7681">    </span><span style="color: #7EE787">severity</span><span style="color: #E6EDF3">:</span><span style="color: #6E7681"> </span><span style="color: #A5D6FF">warning</span>
+</code></pre></div>
+
+<h2>What these rules do not tell you</h2>
+<p>Both rules fire <strong>after</strong> the loop has started, and they do not say which of the seven causes you are facing. They also miss a quieter pattern: a workload that fails on a regular rhythm, every few hours, never often enough to trip a "3 restarts in 30 minutes" rule.</p>
+<p><a href="https://getruptura.dev/">Ruptura</a> is an open-source operator for Kubernetes and OpenShift that reports a crash loop as a named failure with its evidence and a next step, and that <strong>predicts the next failure</strong> of a workload that fails at regular intervals. Results go straight to Alertmanager, including the OpenShift cluster Alertmanager. It is early and feedback is welcome on <a href="https://github.com/benfradjselim/ruptura">GitHub</a>.</p><div class="cta"><b>Try Ruptura</b><br>Open source, for Kubernetes and OpenShift. <a data-goatcounter-click="blog-cta" href="/">getruptura.dev</a> · <a href="https://github.com/benfradjselim/ruptura">★ GitHub</a></div></article></main>
+<footer class="w">© 2026 Ruptura · Apache 2.0 · <a href="/">getruptura.dev</a></footer>
+<script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body></html>
