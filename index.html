@@ -80,6 +80,7 @@ h1 em{font-style:normal;color:var(--accent)}
 @media (prefers-reduced-motion:reduce){.ticker .track{animation:none}}
 .yt{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#000;max-width:960px}
 .yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+video.live{display:block;width:100%;max-width:960px;aspect-ratio:16/9;border-radius:14px;border:1px solid var(--line);background:#000}
 /* sections */
 section{padding:80px 0}
 section.soft{background:var(--bg-soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -179,6 +180,15 @@ footer a{color:var(--muted)}
 </div>
 
 
+<section id="live" style="padding-bottom:20px">
+  <div class="wrap">
+    <h2>Recorded live: an out of memory crash, 21 minutes early</h2>
+    <p class="sub">A real OpenShift cluster, one deliberate memory leak. Ruptura predicted the crash 21 min 48 s ahead, the alert fired in the cluster's own Alertmanager, and the real OOM kill landed inside the predicted window.</p>
+    <video class="live" controls playsinline preload="none" poster="live-demo-poster.jpg" aria-label="Live recording on OpenShift: Ruptura predicts an out of memory crash 21 minutes before it happens">
+      <source src="live-demo.mp4" type="video/mp4">
+    </video>
+  </div>
+</section>
 <section id="video" style="padding-bottom:40px">
   <div class="wrap">
     <h2>Ruptura in 4 minutes</h2>
@@ -315,5 +325,6 @@ docker compose up --build</pre>
 </footer>
 
 <script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<script>document.querySelectorAll("video[controls]").forEach(function(v){v.addEventListener("play",function(){if(window.goatcounter&&goatcounter.count&&!v.dataset.c){v.dataset.c=1;goatcounter.count({path:"play-"+v.querySelector("source").getAttribute("src"),title:"video play",event:true})}})});</script>
 </body>
 </html>

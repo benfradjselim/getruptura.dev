@@ -27,6 +27,7 @@ h1 em{font-style:normal;color:var(--acc)}
 .step i{font-style:normal;display:inline-flex;width:24px;height:24px;border-radius:50%;background:#0d2a4a;color:var(--acc);align-items:center;justify-content:center;font-size:12px}
 .yt{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000}
 .yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+video.vert{display:block;width:100%;max-height:82vh;aspect-ratio:9/16;margin:0 auto 8px;border-radius:14px;border:1px solid var(--line);background:#000}
 .pts{list-style:none;padding:0;margin:0}
 .pts li{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
 .pts b{display:block;font-size:16px;margin-bottom:2px} .pts span{color:var(--muted);font-size:14.5px}
@@ -47,22 +48,25 @@ footer{padding:30px 0 40px;color:var(--muted);font-size:13px;text-align:center}
 <h1>Sachez ce qui va tomber, <em>quand et pourquoi</em>, avant vos utilisateurs.</h1>
 <p class="lead">Ruptura est un opérateur open source pour OpenShift et Kubernetes. Il lit vos métriques et annonce les pannes avant qu'elles arrivent : le temps restant, la preuve, et quoi faire.</p>
 
-<div class="step"><i>1</i>Ruptura en 4 minutes</div>
+<div class="step"><i>1</i>La démo live : une panne prévue 21 min avant</div>
+<video class="vert" controls playsinline preload="none" poster="live-demo-vertical.jpg" aria-label="Démo enregistrée sur OpenShift : Ruptura prévoit un crash out of memory 21 minutes avant"><source src="live-demo-vertical.mp4" type="video/mp4"></video>
+<p class="note">Enregistré sur un vrai cluster OpenShift. Prévu 21 min 48 s avant le crash, dans la fenêtre annoncée.</p>
+<div class="step"><i>2</i>Ruptura en 4 minutes</div>
 <div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/sD1mMTWQgvY?rel=0" title="Ruptura in 4 minutes" loading="lazy" allow="encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></div>
 
-<div class="step"><i>2</i>Pourquoi c'est fait pour OpenShift</div>
+<div class="step"><i>3</i>Pourquoi c'est fait pour OpenShift</div>
 <ul class="pts">
 <li><b>Dans l'Alertmanager du cluster</b><span>Les pannes prédites suivent vos routes, silences et receivers existants.</span></li>
 <li><b>Une seule ressource, un opérateur</b><span>Pas de base externe. Compatible Pod Security « restricted ».</span></li>
 <li><b>Ce qu'un seuil ne voit pas</b><span>Le replica qui fuit seul, la release qui fuit 3× plus vite que la précédente, avec qui tombe avec elle.</span></li>
 </ul>
 
-<div class="step"><i>3</i>L'essayer en 2 commandes</div>
+<div class="step"><i>4</i>L'essayer en 2 commandes</div>
 <div class="cmd"><button onclick="cp(this)">Copier</button>oc apply -f https://raw.githubusercontent.com/benfradjselim/ruptura/main/install/operator.yaml</div>
 <div class="cmd"><button onclick="cp(this)">Copier</button>oc -n ruptura-system rollout status deploy/ruptura-operator</div>
 <p class="note">Puis créez une ressource RupturaInstance : <a data-goatcounter-click="summit-docs" href="https://docs.getruptura.dev/install/">guide d'installation</a>.</p>
 
-<div class="step"><i>4</i>Rejoignez-nous</div>
+<div class="step"><i>5</i>Rejoignez-nous</div>
 <a class="btn b1" data-goatcounter-click="summit-star" href="https://github.com/benfradjselim/ruptura">★ Star sur GitHub</a>
 <div class="ap">
   <h2>Ruptura Autopilot</h2>
@@ -75,5 +79,6 @@ footer{padding:30px 0 40px;color:var(--muted);font-size:13px;text-align:center}
 </div>
 <script>function cp(b){const t=b.parentNode.childNodes[1].textContent.trim();navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>{b.textContent="Copié";setTimeout(()=>b.textContent="Copier",1500)})}</script>
 <script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<script>document.querySelectorAll("video[controls]").forEach(function(v){v.addEventListener("play",function(){if(window.goatcounter&&goatcounter.count&&!v.dataset.c){v.dataset.c=1;goatcounter.count({path:"play-summit-vertical",title:"video play",event:true})}})});</script>
 </body>
 </html>
