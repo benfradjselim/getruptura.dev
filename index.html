@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ruptura — Predictive observability for Kubernetes and OpenShift</title>
-<meta name="description" content="Ruptura is an open-source operator for Kubernetes and OpenShift that predicts workload failures before they happen: the failure, the time left, the evidence and the next step.">
-<meta property="og:title" content="Ruptura — Know what will fail, before your users do">
-<meta property="og:description" content="Open-source predictive observability for Kubernetes and OpenShift. One conclusion per failure, straight into your Alertmanager.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ruptura: know which pod fails next, and when</title>
+<meta name="description" content="Ruptura is an open-source operator for Kubernetes and OpenShift that names the failure coming: what breaks, the minute it lands, the window around it, and what to do. No agent, reads the Prometheus you have.">
+<meta property="og:title" content="Ruptura: know which pod fails next, and when">
+<meta property="og:description" content="Open-source failure prediction for Kubernetes and OpenShift. Recorded live: an OOM kill predicted 21 minutes ahead, inside its window.">
 <meta property="og:url" content="https://getruptura.dev/">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://getruptura.dev/og.png">
@@ -14,316 +14,473 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://getruptura.dev/og.png">
+<meta name="theme-color" content="#18222b">
 <link rel="canonical" href="https://getruptura.dev/">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Martian+Mono:wght@400;500&display=swap">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Ruptura", "applicationCategory": "DeveloperApplication", "operatingSystem": "Kubernetes, OpenShift", "description": "Open-source operator for Kubernetes and OpenShift that names the failure coming: what breaks, when, the window around it, and what to do.", "url": "https://getruptura.dev", "license": "https://www.apache.org/licenses/LICENSE-2.0", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "codeRepository": "https://github.com/benfradjselim/ruptura"}</script>
 <style>
-:root{
-  --bg:#ffffff; --bg-soft:#f6f8fa; --card:#ffffff; --line:#d0d7de;
-  --fg:#0d1117; --muted:#57606a; --accent:#0969da; --accent-soft:#ddf4ff;
-  --red:#cf222e; --green:#1a7f37; --code-bg:#0d1117; --code-fg:#e6edf3;
+/* Layout: product site, left-aligned. Hero pairs the claim with the real product screen; a broken horizontal line (the fault) is the brand mark, the section divider and the time axis. */
+:root {
+  --bg: #f4f5f2;          /* mineral white */
+  --surface: #ffffff;
+  --ink: #18222b;         /* basalt */
+  --ink-2: #4a5763;
+  --line: #d6dad6;
+  --fissure: #f0b400;     /* the only brand color, for what is about to break */
+  --fissure-ink: #8a6400; /* fissure dark enough for text on light */
+  --ok: #2f7d5b;
+  --shot: #141c23;        /* product screen, dark in both themes like the real console */
+  --shot-2: #1d2731;
+  --shot-line: #2b3743;
+  --shot-text: #e4e9ec;
+  --shot-dim: #8996a2;
+  --sans: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --mono: "Martian Mono", ui-monospace, Menlo, monospace;
 }
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#0d1117; --bg-soft:#161b22; --card:#161b22; --line:#30363d;
-    --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --accent-soft:#0d2a4a;
-    --red:#f85149; --green:#3fb950; --code-bg:#010409; --code-fg:#e6edf3;
-  }
-}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
-a{color:var(--accent);text-decoration:none}
-a:hover{text-decoration:underline}
-.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
-code,pre{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11181e; --surface: #17212a; --ink: #e8ecee; --ink-2: #a3afb8; --line: #26323c;
+  --fissure: #f5c02e; --fissure-ink: #f5c02e; --ok: #5cc595; --shot: #0b1116; --shot-2: #121a21; --shot-line: #23303b; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #11181e; --surface: #17212a; --ink: #e8ecee; --ink-2: #a3afb8; --line: #26323c;
+  --fissure: #f5c02e; --fissure-ink: #f5c02e; --ok: #5cc595; --shot: #0b1116; --shot-2: #121a21; --shot-line: #23303b; color-scheme: dark; }
 
-/* nav */
-nav{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--fg)}
-.brand img{width:28px;height:28px}
-.links{display:flex;gap:24px;align-items:center;font-size:15px}
-.links a{color:var(--muted)}
-.links a:hover{color:var(--fg);text-decoration:none}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;font-weight:600;font-size:15px;border:1px solid transparent;transition:transform .1s}
-.btn:hover{text-decoration:none;transform:translateY(-1px)}
-.btn-primary{background:var(--accent);color:#fff}
-.btn-ghost{border-color:var(--line);color:var(--fg)}
-.links .btn-ghost{color:var(--fg);padding:7px 14px}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 400 17px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--fissure); outline-offset: 3px; border-radius: 2px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
-/* hero */
-.hero{padding:88px 0 72px}
-.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
-.eyebrow{display:inline-block;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:4px 10px;border-radius:999px;margin-bottom:20px}
-h1{font-size:clamp(36px,5vw,56px);line-height:1.08;letter-spacing:-.025em;margin:0 0 20px;font-weight:800}
-h1 em{font-style:normal;color:var(--accent)}
-.lead{font-size:19px;color:var(--muted);margin:0 0 32px;max-width:540px}
-.cta{display:flex;gap:12px;flex-wrap:wrap}
-.result{background:var(--code-bg);color:var(--code-fg);border-radius:14px;padding:22px 24px;font-size:14px;border:1px solid var(--line);box-shadow:0 20px 50px -20px rgba(0,0,0,.45);overflow-x:auto}
-.result .bar{display:flex;gap:6px;margin-bottom:16px}
-.result .bar i{width:11px;height:11px;border-radius:50%;background:#30363d;display:block}
-.result pre{margin:0;white-space:pre}
-.k{color:#79c0ff}.s{color:#a5d6ff}.n{color:#3fb950;font-weight:600}.c{color:#8b949e}
-.result-cap{font-size:13px;color:var(--muted);margin-top:12px;text-align:center}
+/* The fault: a line with an offset step. */
+.fault { display: block; width: 100%; height: 14px; color: var(--ink); }
+.fault path { fill: none; stroke: currentColor; stroke-width: 2; }
+.fault .crack { stroke: var(--fissure); stroke-width: 3; }
 
-.demo{border-radius:14px;overflow:hidden;border:1px solid var(--line);box-shadow:0 20px 50px -20px rgba(0,0,0,.45);background:#0d1117;aspect-ratio:3/2}
-.demo video{display:block;width:100%;height:100%;object-fit:cover}
-.ticker{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg-soft);padding:14px 0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
-.ticker .track{display:flex;width:max-content;animation:scroll 60s linear infinite}
-.ticker span{white-space:nowrap;padding:0 28px;font-size:14px;color:var(--muted);font-family:"JetBrains Mono",ui-monospace,monospace}
-.ticker b{font-weight:500}.ticker b.p{color:var(--green)}.ticker b.d{color:var(--red)}
-.ticker:hover .track{animation-play-state:paused}
-@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@media (prefers-reduced-motion:reduce){.ticker .track{animation:none}}
-.yt{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#000;max-width:960px}
-.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-video.live{display:block;width:100%;max-width:960px;aspect-ratio:16/9;border-radius:14px;border:1px solid var(--line);background:#000}
-/* sections */
-section{padding:80px 0}
-section.soft{background:var(--bg-soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-h2{font-size:clamp(28px,3.4vw,38px);letter-spacing:-.02em;line-height:1.15;margin:0 0 14px}
-.sub{color:var(--muted);font-size:18px;margin:0 0 44px;max-width:680px}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px}
-.card h3{margin:0 0 8px;font-size:18px}
-.card p{margin:0;color:var(--muted);font-size:15px}
 
-/* steps */
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;counter-reset:s}
-.step{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px}
-.step::before{counter-increment:s;content:counter(s);display:inline-flex;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:14px;align-items:center;justify-content:center;margin-bottom:12px}
-.step h3{margin:0 0 6px;font-size:16px}
-.step p{margin:0;color:var(--muted);font-size:14px}
+.nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.logo { display: inline-flex; align-items: center; gap: 12px; font: 800 21px var(--sans); letter-spacing: -.01em; text-decoration: none; }
+.logo svg { width: 38px; height: 16px; }
+.logo svg path { fill: none; stroke: var(--ink); stroke-width: 3; }
+.logo svg .crack { stroke: var(--fissure); }
+.nav ul { display: flex; gap: 26px; list-style: none; margin: 0; padding: 0; font-size: 15px; color: var(--ink-2); flex-wrap: wrap; }
+.nav ul a { text-decoration: none; }
+.nav ul a:hover { color: var(--ink); }
+.btn { display: inline-flex; align-items: center; gap: 10px; font: 600 15px var(--sans); text-decoration: none; padding: 12px 18px; border: 1.5px solid var(--ink); color: var(--ink); background: transparent; }
+.btn.primary { background: var(--ink); color: var(--bg); }
+.btn.primary:hover { background: transparent; color: var(--ink); }
+.btn:hover { border-color: var(--fissure); }
 
-/* failure modes */
-.modes h3{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 14px}
-.chips{display:flex;flex-wrap:wrap;gap:10px}
-.chip{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 12px;font-size:14px}
-.chip b{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:13px;display:block;color:var(--fg)}
-.chip span{color:var(--muted);font-size:13px}
-.tag-p{color:var(--green)}.tag-d{color:var(--red)}
+.hero { padding-block: 40px 64px; }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 56px; align-items: center; }
+@media (max-width: 980px) { .hero .wrap { grid-template-columns: 1fr; gap: 36px; } }
+.eyebrow { font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 18px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.eyebrow b { background: var(--fissure); color: #18222b; font-weight: 500; padding: 2px 7px; }
+h1 { font: 800 clamp(40px, 5.6vw, 72px)/1.02 var(--sans); letter-spacing: -.035em; margin: 0 0 22px; text-wrap: balance; }
+h1 em { font-style: normal; background: linear-gradient(transparent 62%, color-mix(in srgb, var(--fissure) 55%, transparent) 62%); }
+.lede { font-size: 19px; color: var(--ink-2); max-width: 34em; margin: 0 0 30px; }
+.ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 30px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; font: 400 12.5px var(--mono); color: var(--ink-2); }
+.facts span::before { content: "— "; color: var(--fissure-ink); }
 
-/* install */
-.install{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.install .card h3{margin-bottom:12px}
-.install pre{background:var(--code-bg);color:var(--code-fg);border-radius:8px;padding:14px;font-size:12.5px;overflow-x:auto;margin:0 0 10px;white-space:pre}
-.install p{font-size:14px}
+/* Product screen: Rupture Horizon as it renders, with the night's data. */
+.shot { background: var(--shot); color: var(--shot-text); border: 1px solid var(--shot-line); box-shadow: 0 30px 60px -30px rgba(10,16,22,.45); min-width: 0; }
+.shot-bar { display: flex; align-items: center; gap: 18px; padding: 10px 16px; border-bottom: 1px solid var(--shot-line); font: 500 11px var(--mono); color: var(--shot-dim); letter-spacing: .06em; text-transform: uppercase; overflow-x: auto; white-space: nowrap; }
+.shot-bar .on { color: var(--shot-text); border-bottom: 2px solid var(--fissure); padding-bottom: 3px; }
+.shot-body { padding: 20px 18px 18px; }
+.shot-title { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.shot-title h2 { font: 700 22px var(--sans); margin: 0; letter-spacing: -.01em; }
+.shot-title p { margin: 0 0 4px; font: 500 10.5px var(--mono); color: var(--shot-dim); text-transform: uppercase; letter-spacing: .1em; }
+.tally { display: flex; gap: 16px; font: 500 11px var(--mono); color: var(--shot-dim); }
+.tally b { display: block; font: 600 20px var(--mono); color: var(--shot-text); }
+.tally .hot b { color: var(--fissure); }
+.axis { position: relative; height: 54px; margin: 6px 0 16px; }
+.axis .base { position: absolute; left: 0; right: 0; top: 30px; height: 2px; background: var(--shot-line); }
+.axis .now { position: absolute; left: 50%; top: 18px; width: 2px; height: 26px; background: var(--shot-text); }
+.axis .tick { position: absolute; top: 38px; font: 400 10px var(--mono); color: var(--shot-dim); transform: translateX(-50%); }
+.axis .mark { position: absolute; top: 0; transform: translateX(-50%); font: 600 10.5px var(--mono); color: #18222b; background: var(--fissure); padding: 2px 6px; white-space: nowrap; }
+.axis .mark::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 12px; background: var(--fissure); }
+.axis .band { position: absolute; top: 27px; height: 8px; background: color-mix(in srgb, var(--fissure) 35%, transparent); }
+.row { display: grid; grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1.1fr); gap: 14px; padding: 12px 0; border-top: 1px solid var(--shot-line); font-size: 13.5px; }
+.row .t b { display: block; font: 600 17px var(--mono); }
+.row .t span { font: 400 10.5px var(--mono); color: var(--shot-dim); text-transform: uppercase; }
+.row.pred .t b { color: var(--fissure); }
+.row h3 { margin: 0; font: 700 15px var(--sans); }
+.row .ns { margin: 0; color: var(--shot-dim); font: 400 11px var(--mono); }
+.row .why p { margin: 0; color: var(--shot-dim); line-height: 1.45; }
+.row .why strong { color: var(--shot-text); font-weight: 600; }
+.spark { width: 100%; height: 34px; margin-top: 6px; display: block; }
+@media (max-width: 560px) { .row { grid-template-columns: 76px minmax(0, 1fr); } .row .why { grid-column: 1 / -1; } }
 
-/* status */
-.status{display:flex;gap:28px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:32px}
-.status h2{font-size:26px;margin-bottom:6px}
-.status p{margin:0;color:var(--muted)}
+section { padding-block: 72px; }
+.sec-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 40px; align-items: end; margin-bottom: 40px; }
+@media (max-width: 880px) { .sec-head { grid-template-columns: 1fr; gap: 12px; } }
+h2.title { font: 800 clamp(30px, 3.6vw, 46px)/1.05 var(--sans); letter-spacing: -.03em; margin: 0; text-wrap: balance; }
+.sec-head p { margin: 0; color: var(--ink-2); max-width: 36em; }
+.label { font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--fissure-ink); margin: 0 0 12px; }
 
-.hero .wrap>*,.grid2>*,.grid3>*,.install>*,.steps>*{min-width:0}
-footer{padding:40px 0;color:var(--muted);font-size:14px;border-top:1px solid var(--line)}
-footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-footer a{color:var(--muted)}
+/* The night, on the fault axis. */
+.night { position: relative; }
+.night ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+@media (max-width: 880px) { .night ol { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .night ol { grid-template-columns: 1fr; } }
+.night li { border-top: 2px solid var(--ink); padding-top: 14px; min-width: 0; }
+.night li.r { border-top: 3px solid var(--fissure); }
+.night time { font: 500 24px var(--mono); letter-spacing: -.02em; display: block; margin-bottom: 6px; }
+.night li p { margin: 0; color: var(--ink-2); font-size: 15.5px; }
+.night li strong { color: var(--ink); }
+.night .outcome { margin-top: 36px; display: flex; gap: 18px 40px; flex-wrap: wrap; font-size: 15.5px; }
+.night .outcome div { min-width: 0; }
+.night .outcome b { display: block; font: 500 34px var(--mono); letter-spacing: -.03em; }
 
-@media (max-width:900px){
-  .hero .wrap,.grid3,.grid2,.install{grid-template-columns:1fr}
-  .steps{grid-template-columns:1fr 1fr}
-  .links a:not(.btn){display:none}
-  .hero{padding:56px 0}
-}
-@media (max-width:520px){ .steps{grid-template-columns:1fr} section{padding:56px 0} }
+/* What it names. */
+.modes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; border-top: 1px solid var(--line); }
+@media (max-width: 780px) { .modes { grid-template-columns: 1fr; } }
+.modes > div { padding: 28px 28px 28px 0; min-width: 0; }
+.modes > div + div { border-left: 1px solid var(--line); padding-left: 28px; }
+@media (max-width: 780px) { .modes > div + div { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); } }
+.modes h3 { font: 700 20px var(--sans); margin: 0 0 4px; }
+.modes > div > p { color: var(--ink-2); margin: 0 0 18px; font-size: 15.5px; }
+.modes ul { list-style: none; margin: 0; padding: 0; }
+.modes li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 15.5px; }
+.modes li span { font: 400 12px var(--mono); color: var(--ink-2); white-space: nowrap; }
+
+/* How it fits. */
+.fit { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+@media (max-width: 880px) { .fit { grid-template-columns: 1fr; } }
+.diagram { background: var(--surface); border: 1px solid var(--line); padding: 22px; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.diagram text { font-family: var(--mono); font-size: 12px; fill: var(--ink); }
+.diagram .dim { fill: var(--ink-2); }
+.diagram rect { fill: var(--bg); stroke: var(--ink); stroke-width: 1.5; }
+.diagram rect.core { fill: var(--ink); }
+.diagram text.on-core { fill: var(--bg); font-weight: 500; }
+.diagram path { stroke: var(--ink-2); stroke-width: 1.5; fill: none; }
+.diagram path.out { stroke: var(--fissure); stroke-width: 2.5; }
+.points { list-style: none; margin: 0; padding: 0; }
+.points li { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.points li:first-child { padding-top: 0; }
+.points b { display: block; font-size: 17px; margin-bottom: 2px; }
+.points span { color: var(--ink-2); font-size: 15.5px; }
+
+/* Measured. */
+.bench { overflow-x: auto; border-top: 2px solid var(--ink); }
+.bench table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 15.5px; }
+.bench th, .bench td { text-align: left; padding: 14px 16px 14px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.bench th { font: 500 11.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.bench td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14.5px; }
+.bench tr.loss td { color: var(--ink-2); }
+.verdict { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .08em; padding: 2px 7px; border: 1px solid currentColor; white-space: nowrap; }
+.verdict.win { color: var(--ok); }
+.verdict.lose { color: var(--fissure-ink); }
+.bench-note { color: var(--ink-2); font-size: 15px; margin-top: 18px; max-width: 46em; }
+
+/* Install. */
+.install { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 48px; align-items: start; }
+@media (max-width: 880px) { .install { grid-template-columns: 1fr; } }
+.code { background: var(--shot); color: var(--shot-text); padding: 22px; overflow-x: auto; font: 400 13px/1.75 var(--mono); border: 1px solid var(--shot-line); margin: 0; }
+.code .c { color: var(--shot-dim); }
+.code .k { color: var(--fissure); }
+.paths { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.paths a { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); text-decoration: none; }
+.paths a span { color: var(--ink-2); font-size: 15px; display: block; }
+.paths a i { font-style: normal; font-family: var(--mono); color: var(--fissure-ink); align-self: center; }
+.paths a:hover b { text-decoration: underline; text-decoration-color: var(--fissure); text-underline-offset: 4px; }
+
+footer { padding-block: 34px 48px; border-top: 1px solid var(--line); }
+footer .wrap { display: flex; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap; font-size: 14px; color: var(--ink-2); }
+footer .logo { font-size: 17px; color: var(--ink); }
+
+html { scroll-behavior: smooth; }
+body { margin: 0; }
+.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); padding-block: 14px; }
+.media { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 32px; margin-top: 40px; align-items: start; }
+@media (max-width: 880px) { .media { grid-template-columns: 1fr; } }
+.media video { width: 100%; max-width: 100%; display: block; background: var(--shot); border: 1px solid var(--line); aspect-ratio: 16 / 9; }
+.yt { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border: 1px solid var(--line); background: var(--shot); }
+.yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.cap { font-size: 14.5px; color: var(--ink-2); margin: 10px 0 0; }
+.cap a { text-decoration-color: var(--fissure); text-underline-offset: 3px; }
+.alts { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 0 28px; margin-top: 26px; }
+@media (max-width: 600px) { .alts { grid-template-columns: 1fr; } }
+.alts h3 { font: 700 16px var(--sans); margin: 0 0 8px; }
+.alts p { color: var(--ink-2); font-size: 14.5px; margin: 8px 0 18px; }
+.alts .code { font-size: 12px; padding: 14px; }
+.posts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 2px solid var(--ink); }
+@media (max-width: 880px) { .posts { grid-template-columns: 1fr; } }
+.posts a { display: block; padding: 20px 24px 22px 0; text-decoration: none; border-bottom: 1px solid var(--line); min-width: 0; }
+.posts a + a { padding-left: 24px; border-left: 1px solid var(--line); }
+@media (max-width: 880px) { .posts a + a { padding-left: 0; border-left: 0; } }
+.posts h3 { font: 700 19px/1.25 var(--sans); margin: 0 0 8px; letter-spacing: -.01em; text-wrap: balance; }
+.posts p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.posts a:hover h3 { text-decoration: underline; text-decoration-color: var(--fissure); text-underline-offset: 4px; }
+.more { display: inline-block; margin-top: 18px; font-weight: 600; text-decoration-color: var(--fissure); text-underline-offset: 4px; }
+.adopt { background: var(--ink); color: var(--bg); }
+.adopt .wrap { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 32px; align-items: center; padding-block: 56px; }
+@media (max-width: 880px) { .adopt .wrap { grid-template-columns: 1fr; } }
+.adopt h2 { font: 800 clamp(28px, 3.2vw, 40px)/1.08 var(--sans); letter-spacing: -.03em; margin: 0 0 10px; }
+.adopt p { margin: 0; color: color-mix(in srgb, var(--bg) 75%, var(--ink)); max-width: 40em; }
+.adopt .btn { border-color: var(--bg); color: var(--bg); }
+.adopt .btn.primary { background: var(--fissure); border-color: var(--fissure); color: #18222b; }
+.adopt .ctas { margin: 0; }
+footer .links { display: flex; gap: 18px; flex-wrap: wrap; }
+footer .links a { text-decoration: none; }
+footer .links a:hover { color: var(--ink); }
 </style>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Ruptura", "applicationCategory": "DeveloperApplication", "operatingSystem": "Kubernetes, OpenShift", "description": "Open-source predictive observability operator for Kubernetes and OpenShift: what will fail, when, why, and what to do.", "url": "https://getruptura.dev", "license": "https://www.apache.org/licenses/LICENSE-2.0", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "codeRepository": "https://github.com/benfradjselim/ruptura"}</script>
 </head>
 <body>
-
-<nav>
+<header class="nav">
   <div class="wrap">
-    <a class="brand" href="#"><img src="logo.png" alt="">Ruptura</a>
-    <div class="links">
-      <a href="#video">Video</a>
-      <a href="#how">How it works</a>
-      <a href="#failures">Failures</a>
-      <a href="#install">Install</a>
-      <a data-goatcounter-click="docs-nav" href="https://docs.getruptura.dev/">Docs</a>
-      <a data-goatcounter-click="github-nav" class="btn btn-ghost" href="https://github.com/benfradjselim/ruptura">★ GitHub</a>
-    </div>
-  </div>
-</nav>
-
-<header class="hero">
-  <div class="wrap">
-    <div>
-      <span class="eyebrow">Open source · Kubernetes &amp; OpenShift</span>
-      <h1>Know what will fail, <em>when, and why</em>, before your users do.</h1>
-      <p class="lead">Ruptura runs in your cluster on top of the Prometheus you already have. It turns telemetry into clear conclusions: the failure, the time left, the evidence, and the next step.</p>
-      <div class="cta">
-        <a data-goatcounter-click="get-started" class="btn btn-primary" href="#install">Get started</a>
-        <a data-goatcounter-click="star-github-hero" class="btn btn-ghost" href="https://github.com/benfradjselim/ruptura">★ Star on GitHub</a>
-      </div>
-    </div>
-    <div>
-      <div class="demo">
-        <video autoplay muted loop playsinline preload="metadata" poster="poster.jpg" aria-label="Demo: Ruptura spots a leaking pod, predicts the OOM kill 10 minutes ahead and fires an Alertmanager alert">
-          <source src="demo.webm" type="video/webm">
-          <source src="demo.mp4" type="video/mp4">
-        </video>
-      </div>
-      <p class="result-cap">From a leaking pod to an Alertmanager alert, 10 minutes before the OOM kill.</p>
-    </div>
+    <a class="logo" href="/" aria-label="Ruptura home"><svg viewBox="0 0 38 16" aria-hidden="true"><path d="M1 5 H17"/><path class="crack" d="M17 5 L21 11"/><path d="M21 11 H37"/></svg>Ruptura</a>
+    <ul>
+      <li><a href="#night">How it works</a></li>
+      <li><a href="#modes">Failure modes</a></li>
+      <li><a href="#measured">Benchmark</a></li>
+      <li><a href="/blog/">Blog</a></li>
+      <li><a data-goatcounter-click="docs-nav" href="https://docs.getruptura.dev/">Docs</a></li>
+      <li><a data-goatcounter-click="github-nav" href="https://github.com/benfradjselim/ruptura">GitHub</a></li>
+    </ul>
+    <a data-goatcounter-click="get-started" class="btn primary" href="#install">Install</a>
   </div>
 </header>
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow"><b>8.7.8</b> Kubernetes and OpenShift · on OperatorHub</p>
+        <h1>Know which pod fails next, <em>and when.</em></h1>
+        <p class="lede">Ruptura reads the Prometheus and the events your cluster already has, and names the failure coming: what breaks, the minute it lands, the window around it, and what to do before it happens.</p>
+        <div class="ctas">
+          <a data-goatcounter-click="get-started-hero" class="btn primary" href="#install">Install on your cluster</a>
+          <a data-goatcounter-click="star-github-hero" class="btn" href="https://github.com/benfradjselim/ruptura">Star on GitHub</a>
+        </div>
+        <div class="facts"><span>No agent on your workloads</span><span>Air-gapped ready</span><span>Apache 2.0</span></div>
+      </div>
 
-<div class="ticker" aria-hidden="true">
-  <div class="track">
-    <span><b class="p">saturation</b> predicted · 626 s left</span><span><b class="d">oom_killed</b> detected</span><span><b class="p">release_regression</b> predicted · roll back</span><span><b class="d">crash_loop</b> detected</span><span><b class="p">replica_divergence</b> predicted · pod named</span><span><b class="d">rollout_stuck</b> detected</span><span><b class="p">recurrent_failure</b> predicted</span><span><b class="d">cpu_throttling</b> detected</span><span><b class="d">startup_stuck</b> detected</span><span><b class="d">replicas_unavailable</b> detected</span>
-    <span><b class="p">saturation</b> predicted · 626 s left</span><span><b class="d">oom_killed</b> detected</span><span><b class="p">release_regression</b> predicted · roll back</span><span><b class="d">crash_loop</b> detected</span><span><b class="p">replica_divergence</b> predicted · pod named</span><span><b class="d">rollout_stuck</b> detected</span><span><b class="p">recurrent_failure</b> predicted</span><span><b class="d">cpu_throttling</b> detected</span><span><b class="d">startup_stuck</b> detected</span><span><b class="d">replicas_unavailable</b> detected</span>
-  </div>
-</div>
-
-
-<section id="live" style="padding-bottom:20px">
-  <div class="wrap">
-    <h2>Recorded live: an out of memory crash, 21 minutes early</h2>
-    <p class="sub">A real OpenShift cluster, one deliberate memory leak. Ruptura predicted the crash 21 min 48 s ahead, the alert fired in the cluster's own Alertmanager, and the real OOM kill landed inside the predicted window.</p>
-    <video class="live" controls playsinline preload="none" poster="live-demo-poster.jpg" aria-label="Live recording on OpenShift: Ruptura predicts an out of memory crash 21 minutes before it happens">
-      <source src="live-demo.mp4" type="video/mp4">
-    </video>
-  </div>
-</section>
-<section id="video" style="padding-bottom:40px">
-  <div class="wrap">
-    <h2>Ruptura in 4 minutes</h2>
-    <p class="sub">The problem with threshold alerts, what Ruptura tells you instead, and where it is going.</p>
-    <div class="yt">
-      <iframe src="https://www.youtube-nocookie.com/embed/sD1mMTWQgvY?rel=0" title="Predict Kubernetes failures before they happen: Ruptura in 4 minutes" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      <figure class="shot" aria-label="Rupture Horizon screen, 9 November 2026 at 23:29:56 UTC">
+        <div class="shot-bar"><span class="on">Rupture horizon</span><span>Call graph</span><span>Fleet</span><span>Infra</span><span>Engine</span></div>
+        <div class="shot-body">
+          <div class="shot-title">
+            <div><p>Rupture horizon · 23:29:56 UTC</p><h2>3 ruptures in sight</h2></div>
+            <div class="tally"><div class="hot"><b>1</b>predicted</div><div><b>2</b>detected</div></div>
+          </div>
+          <div class="axis" aria-hidden="true">
+            <div class="base"></div>
+            <div class="band" style="left:85%;width:13%"></div>
+            <span class="mark" style="left:87%">inventory · 23:52</span>
+            <div class="now"></div>
+            <span class="tick" style="left:4%">−30 min</span><span class="tick" style="left:50%">now</span><span class="tick" style="left:96%">+30 min</span>
+          </div>
+          <div class="row pred">
+            <div class="t"><b>22 min</b><span>predicted</span></div>
+            <div><h3>inventory</h3><p class="ns">boutique / Deployment</p>
+              <svg class="spark" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><path d="M0 33 L22 32 L70 25 L140 14 L170 10" stroke="#e4e9ec" stroke-width="1.6" fill="none"/><path d="M170 10 L200 1" stroke="#f0b400" stroke-width="1.6" stroke-dasharray="3 3" fill="none"/><path d="M0 1 H200" stroke="#2b3743" stroke-width="1" fill="none"/></svg>
+            </div>
+            <div class="why"><p><strong>OOM kill</strong> · window 21 to 25 min</p><p>Memory at 30% of its 256 Mi limit, rising about 8 Mi a minute. Can hit checkout, frontend.</p></div>
+          </div>
+          <div class="row">
+            <div class="t"><b>now</b><span>detected</span></div>
+            <div><h3>crash-pay</h3><p class="ns">demo-shop / Deployment</p></div>
+            <div class="why"><p><strong>Crash loop</strong> · Kubernetes back-off</p><p>Kubernetes reports back-off restarting the container.</p></div>
+          </div>
+          <div class="row">
+            <div class="t"><b>now</b><span>detected</span></div>
+            <div><h3>bad-image</h3><p class="ns">demo-shop / Deployment</p></div>
+            <div class="why"><p><strong>Startup stuck</strong> · image pull</p><p>The image cannot be pulled; the pod never starts.</p></div>
+          </div>
+        </div>
+      </figure>
     </div>
-    <p style="margin-top:14px;font-size:15px;color:var(--muted)"><a data-goatcounter-click="youtube-watch" href="https://youtu.be/sD1mMTWQgvY">Watch on YouTube</a> and subscribe for new failure modes as they ship.</p>
-  </div>
-</section>
-<section class="soft">
-  <div class="wrap">
-    <h2>Threshold alerts fire too late.</h2>
-    <p class="sub">A rule like "memory above 90%" says a pod is in trouble, not whether it will be killed in two minutes or never. Ruptura answers the question that matters.</p>
-    <div class="grid3">
-      <div class="card"><h3>Conclusions, not charts</h3><p>One result per failure, with the target, the failure mode, the time left and the evidence. No new dashboard to watch.</p></div>
-      <div class="card"><h3>Learns each workload</h3><p>Every workload is compared with its own history and its siblings, not with a global threshold.</p></div>
-      <div class="card"><h3>Honest by design</h3><p>Predicted and detected failures are kept apart, and Ruptura reports the data it cannot see.</p></div>
-      <div class="card"><h3>Your scope, your rules</h3><p>Choose the level to watch, how deep to collect, and where results go.</p></div>
-      <div class="card"><h3>Kubernetes native</h3><p>One custom resource, one operator, no external database. On OpenShift, results reach the cluster Alertmanager.</p></div>
-      <div class="card"><h3>Open source</h3><p>Apache 2.0. Runs entirely in your cluster. Your telemetry never leaves it.</p></div>
-    </div>
-  </div>
-</section>
+  </section>
 
-<section id="how">
-  <div class="wrap">
-    <h2>How it works</h2>
-    <p class="sub">Ruptura sits on top of your existing monitoring stack. Nothing to replace.</p>
-    <div class="steps">
-      <div class="step"><h3>Collect</h3><p>Reads Prometheus, OTLP and the Kubernetes API.</p></div>
-      <div class="step"><h3>Catalog</h3><p>Maps every metric to the workload it describes.</p></div>
-      <div class="step"><h3>Forecast</h3><p>Forecasts each workload and spots anomalies against its own history.</p></div>
-      <div class="step"><h3>Conclude</h3><p>Names the failure and sends it to Alertmanager, dashboards and your tools.</p></div>
-    </div>
-  </div>
-</section>
+  <div class="wrap"><svg class="fault" viewBox="0 0 1200 14" preserveAspectRatio="none" aria-hidden="true"><path d="M0 3 H780"/><path class="crack" d="M780 3 L792 11"/><path d="M792 11 H1200"/></svg></div>
 
-<section id="failures" class="soft">
-  <div class="wrap modes">
-    <h2>Failures it names today</h2>
-    <p class="sub">Predicted failures carry the time left. Detected failures report what is happening now.</p>
-    <div class="grid2">
-      <div class="card">
-        <h3 class="tag-p">Predicted</h3>
-        <div class="chips">
-          <div class="chip"><b>saturation</b><span>Memory on course to hit its limit</span></div>
-          <div class="chip"><b>release_regression</b><span>A new version leaks faster than the last</span></div>
-          <div class="chip"><b>replica_divergence</b><span>One replica leaks, its siblings stay flat</span></div>
-          <div class="chip"><b>recurrent_failure</b><span>Failures on a regular rhythm</span></div>
+  <section id="night">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><p class="label">Recorded live on OpenShift</p><h2 class="title">Twenty-two minutes of warning, recorded.</h2></div>
+        <p>A memory leak started on purpose in a four-service shop on OpenShift. Everything after that happened on its own, read from the cluster's own Prometheus and Alertmanager.</p>
+      </div>
+      <div class="night">
+        <ol>
+          <li><time class="mono">23:19:58</time><p><strong>Leak starts</strong> in inventory, 2 MiB every 15 s. Dashboards stay green.</p></li>
+          <li class="r"><time class="mono">23:29:56</time><p><strong>Ruptura names it.</strong> OOM kill in 22 min 18 s, window 21 to 25 min, callers at risk.</p></li>
+          <li class="r"><time class="mono">23:30:30</time><p><strong>Alert in the cluster.</strong> RupturaFailurePredicted fires in Alertmanager, with the time left.</p></li>
+          <li><time class="mono">23:51:44</time><p><strong>The kill lands</strong> 21 min 48 s after the forecast, inside its window.</p></li>
+        </ol>
+        <div class="outcome">
+          <div><b>21 min 48 s</b>between the forecast and the failure</div>
+          <div><b>0</b>restarts before Ruptura spoke</div>
+          <div><b>2</b>callers named before they were hit</div>
+        </div>
+        <div class="media">
+          <div>
+            <video controls playsinline preload="none" poster="live-demo-poster.jpg" aria-label="Live recording on OpenShift: Ruptura predicts an out of memory kill 21 minutes before it happens">
+              <source src="live-demo.mp4" type="video/mp4">
+            </video>
+            <p class="cap">The recording of that night, unedited: the leak, the forecast, the alert in Alertmanager, the kill.</p>
+          </div>
+          <div>
+            <div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/sD1mMTWQgvY?rel=0" title="Predict Kubernetes failures before they happen: Ruptura in 4 minutes" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+            <p class="cap">Ruptura in 4 minutes. <a data-goatcounter-click="youtube-watch" href="https://youtu.be/sD1mMTWQgvY">Watch on YouTube</a></p>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <h3 class="tag-d">Detected</h3>
-        <div class="chips">
-          <div class="chip"><b>oom_killed</b><span>Container killed out of memory</span></div>
-          <div class="chip"><b>crash_loop</b><span>Repeated restarts</span></div>
-          <div class="chip"><b>startup_stuck</b><span>Image pull or mount failure</span></div>
-          <div class="chip"><b>replicas_unavailable</b><span>Missing replicas</span></div>
-          <div class="chip"><b>rollout_stuck</b><span>Progress deadline passed</span></div>
-          <div class="chip"><b>cpu_throttling</b><span>Throttled for 10 minutes</span></div>
+    </div>
+  </section>
+
+  <section id="modes" style="padding-top:24px">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><p class="label">What it names</p><h2 class="title">Before it breaks, and as it breaks.</h2></div>
+        <p>Every result says whether the failure is predicted or already happening, the measurement behind it and what to do. It also lists the pods closest to their limit, so a quiet cluster still shows what is watched.</p>
+      </div>
+      <div class="modes">
+        <div>
+          <h3>Predicted</h3><p>With a time and a window, from trends and from history.</p>
+          <ul>
+            <li>Memory or disk heading to its limit<span>Theil-Sen trend</span></li>
+            <li>Failure that returns on a rhythm<span>failure memory</span></li>
+            <li>One replica leaking, its siblings flat<span>replica divergence</span></li>
+            <li>New release growing faster than the last<span>first 2 h after rollout</span></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Detected</h3><p>As Kubernetes reports them, explained, often minutes before a default rule fires.</p>
+          <ul>
+            <li>Crash loop, OOM kill<span>with its cause</span></li>
+            <li>Image pull, missing mount, unschedulable<span>startup stuck</span></li>
+            <li>Stuck rollout, missing replicas<span>workload state</span></li>
+            <li>CPU throttled most of the time<span>cgroup periods</span></li>
+          </ul>
         </div>
       </div>
+      <a class="more" data-goatcounter-click="failure-modes" href="https://docs.getruptura.dev/failures/">Every rule in the failure modes reference →</a>
     </div>
-    <p style="margin-top:20px;color:var(--muted);font-size:15px">Full rules in the <a href="https://docs.getruptura.dev/failures/">failure modes reference</a>.</p>
-  </div>
-</section>
+  </section>
 
-<section id="install">
-  <div class="wrap">
-    <h2>Up and running in minutes</h2>
-    <p class="sub">Pick the path that fits your environment.</p>
-    <div class="install">
-      <div class="card">
-        <h3>OpenShift &amp; Kubernetes</h3>
-<pre>oc apply -f https://raw.githubusercontent.com/\
-benfradjselim/ruptura/main/install/operator.yaml</pre>
-        <p>Then create a <code>RupturaInstance</code>. On Kubernetes, set your Prometheus URL in it.</p>
+  <section style="padding-top:24px">
+    <div class="wrap fit">
+      <div class="diagram" role="img" aria-label="Ruptura reads Prometheus or Thanos and the Kubernetes API, and sends failures to Alertmanager, its console and its API">
+        <svg viewBox="0 0 560 250">
+          <rect x="10" y="30" width="150" height="46"/><text x="24" y="58">Prometheus/Thanos</text>
+          <rect x="10" y="102" width="150" height="46"/><text x="24" y="130">Kubernetes API</text>
+          <rect x="10" y="174" width="150" height="46"/><text x="24" y="196">events, owners,</text><text x="24" y="210" class="dim">routes, services</text>
+          <path d="M160 53 C200 53 200 125 228 125"/><path d="M160 125 H228"/><path d="M160 197 C200 197 200 125 228 125"/>
+          <rect class="core" x="228" y="96" width="120" height="58"/><text class="on-core" x="252" y="121">Ruptura</text><text class="on-core" x="252" y="139" style="font-size:10px">engine</text>
+          <path class="out" d="M348 125 C380 125 380 53 412 53"/><path class="out" d="M348 125 H412"/><path class="out" d="M348 125 C380 125 380 197 412 197"/>
+          <rect x="412" y="30" width="138" height="46"/><text x="426" y="58">Alertmanager</text>
+          <rect x="412" y="102" width="138" height="46"/><text x="426" y="130">Console</text>
+          <rect x="412" y="174" width="138" height="46"/><text x="426" y="202">/api/v2/failures</text>
+        </svg>
       </div>
-      <div class="card">
-        <h3>Helm</h3>
-<pre>helm install ruptura \
+      <div>
+        <p class="label">How it fits</p>
+        <h2 class="title" style="margin-bottom:22px">Nothing new to run on your workloads.</h2>
+        <ul class="points">
+          <li><b>Reads what you have</b><span>The cluster's Prometheus or Thanos and the Kubernetes API. No sidecar, no agent, no code change.</span></li>
+          <li><b>Speaks where you look</b><span>Native alerts in Alertmanager and the OpenShift console, its own console, and a REST API.</span></li>
+          <li><b>Knows who calls whom</b><span>Builds the call graph from Services, Routes and env, and names the callers a failure can take down.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="measured" style="padding-top:24px">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><p class="label">Measured, losses included</p><h2 class="title">Against the rules teams write today.</h2></div>
+        <p>Six hours on our OpenShift lab on 9 November, pre-registered before any data. The opponent is <span class="mono">predict_linear</span> over 30 minutes on the same metrics.</p>
+      </div>
+      <div class="bench">
+        <table>
+          <thead><tr><th>Measure</th><th>Ruptura</th><th>predict_linear</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr><td>Memory trends warned before the kill</td><td class="n">18 of 32</td><td class="n">17 of 32</td><td><span class="verdict win">Ahead</span></td></tr>
+            <tr><td>Median warning time</td><td class="n">17.1 min</td><td class="n">7.0 min</td><td><span class="verdict win">10 min earlier</span></td></tr>
+            <tr><td>Periodic spike, no trend to follow</td><td class="n">6 of 6</td><td class="n">0 of 6</td><td><span class="verdict win">Only one to warn</span></td></tr>
+            <tr class="loss"><td>False warnings on the cluster</td><td class="n">6</td><td class="n">0</td><td><span class="verdict lose">Behind</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="bench-note">The full benchmark (prediction, detection, quiet hours, resources, configuration effort) runs on 16 November and is published as measured, wins and losses alike.</p>
+    </div>
+  </section>
+
+  <section id="install" style="padding-top:24px">
+    <div class="wrap install">
+      <div>
+        <p class="label">Install</p>
+        <h2 class="title" style="margin-bottom:22px">One operator, one resource.</h2>
+        <div class="paths">
+          <a data-goatcounter-click="operatorhub" href="https://operatorhub.io/operator/ruptura-operator"><div><b>OperatorHub</b><span>In the OpenShift console and on OperatorHub.io</span></div><i>→</i></a>
+          <a data-goatcounter-click="docs-airgap" href="https://docs.getruptura.dev/install-disconnected/"><div><b>Air-gapped clusters</b><span>Every image by digest, through your mirror</span></div><i>→</i></a>
+          <a data-goatcounter-click="docs-install" href="https://docs.getruptura.dev/"><div><b>Documentation</b><span>Configuration, failure modes, API</span></div><i>→</i></a>
+        </div>
+        <div class="alts">
+          <div><h3>Helm, engine only</h3>
+<pre class="code">helm install ruptura \
   oci://ghcr.io/benfradjselim/charts/ruptura \
   -n ruptura-system --create-namespace \
-  --set thanos.url=&lt;your-prometheus&gt;</pre>
-        <p>Engine only. See the <a href="https://github.com/benfradjselim/ruptura#getting-started">README</a> for all options.</p>
+  --set thanos.url=&lt;your-prometheus&gt;</pre></div>
+          <div><h3>On your laptop</h3>
+<pre class="code">git clone https://github.com/benfradjselim/ruptura
+cd ruptura && docker compose up --build</pre>
+          <p>Then open <span class="mono">localhost:8081</span> to try it on demo workloads.</p></div>
+        </div>
       </div>
-      <div class="card">
-        <h3>Locally, no cluster</h3>
-<pre>git clone https://github.com/\
-benfradjselim/ruptura
-cd ruptura
-docker compose up --build</pre>
-        <p>Open <code>localhost:8081</code> and try it on demo workloads.</p>
+<pre class="code"><span class="c"># the operator</span>
+oc apply -f https://raw.githubusercontent.com/benfradjselim/\
+  ruptura/main/install/operator.yaml
+
+<span class="c"># one instance</span>
+<span class="k">apiVersion:</span> ruptura.io/v1alpha1
+<span class="k">kind:</span> RupturaInstance
+<span class="k">metadata:</span> {name: ruptura, namespace: ruptura-system}
+<span class="k">spec:</span>
+  <span class="k">level:</span> {scope: workload}
+  <span class="k">output:</span> {ui: {enabled: true}}</pre>
+    </div>
+  </section>
+
+  <section id="blog" style="padding-top:24px">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><p class="label">From the blog</p><h2 class="title">Notes from predicting failures for real.</h2></div>
+        <p>Practical write-ups on Kubernetes and OpenShift failures, with the rules you can copy today.</p>
       </div>
+      <div class="posts">
+        <a data-goatcounter-click="home-blog-promql" href="/blog/predict-oom-kills-promql/"><h3>Predict OOM kills 30 minutes ahead with one PromQL alert</h3><p>A copy-paste Prometheus rule, and where it breaks.</p></a>
+        <a data-goatcounter-click="home-blog-137" href="/blog/kubernetes-oomkilled-exit-code-137/"><h3>OOMKilled, exit code 137: why it happens</h3><p>The five real causes, and how to find yours in five minutes.</p></a>
+        <a data-goatcounter-click="home-blog-openshift" href="/blog/openshift-cluster-alertmanager-predictive-alerts/"><h3>Predictive alerts in the OpenShift cluster Alertmanager</h3><p>Routes, silences and inhibition you already have.</p></a>
+      </div>
+      <a class="more" href="/blog/">All articles →</a>
     </div>
-  </div>
-</section>
+  </section>
 
-
-<section id="blog" style="padding-top:20px">
-  <div class="wrap">
-    <h2>From the blog</h2>
-    <p class="sub">Practical notes on predicting failures in Kubernetes and OpenShift.</p>
-    <div class="grid3">
-      <a class="card" style="text-decoration:none;color:inherit" data-goatcounter-click="home-blog-promql" href="/blog/predict-oom-kills-promql/"><h3>Predict OOM kills 30 minutes ahead with one PromQL alert</h3><p>A copy-paste Prometheus rule, and where it breaks.</p></a>
-      <a class="card" style="text-decoration:none;color:inherit" data-goatcounter-click="home-blog-137" href="/blog/kubernetes-oomkilled-exit-code-137/"><h3>OOMKilled, exit code 137: why it happens</h3><p>The five real causes, and how to find yours in five minutes.</p></a>
-      <a class="card" style="text-decoration:none;color:inherit" data-goatcounter-click="home-blog-openshift" href="/blog/openshift-cluster-alertmanager-predictive-alerts/"><h3>Predictive alerts in the OpenShift cluster Alertmanager</h3><p>Routes, silences and inhibition you already have.</p></a>
-    </div>
-    <p style="margin-top:18px"><a href="/blog/">All articles →</a></p>
-  </div>
-</section>
-<section style="padding-top:0">
-  <div class="wrap">
-    <div class="status">
+  <section class="adopt" style="padding-block:0">
+    <div class="wrap">
       <div>
-        <h2>Early, and looking for early adopters</h2>
-        <p>Ruptura is in active development and not yet recommended for production. Try it on a test cluster and help shape the roadmap.</p>
+        <h2>Early, and looking for early adopters.</h2>
+        <p>Ruptura is in active development and not yet recommended for production. Run it on a test cluster and shape what it predicts next.</p>
       </div>
-      <div class="cta">
-        <a data-goatcounter-click="early-adopter" class="btn btn-primary" href="https://github.com/benfradjselim/ruptura/issues/new?template=early-adopter.yml">Become an early adopter</a>
-        <a data-goatcounter-click="discussions" class="btn btn-ghost" href="https://github.com/benfradjselim/ruptura/discussions">Join the discussion</a>
+      <div class="ctas">
+        <a data-goatcounter-click="early-adopter" class="btn primary" href="https://github.com/benfradjselim/ruptura/issues/new?template=early-adopter.yml">Become an early adopter</a>
+        <a data-goatcounter-click="discussions" class="btn" href="https://github.com/benfradjselim/ruptura/discussions">Join the discussion</a>
       </div>
     </div>
-  </div>
-</section>
-
+  </section>
+</main>
 <footer>
   <div class="wrap">
-    <span>© 2026 Ruptura · Apache 2.0</span>
-    <span><a href="https://github.com/benfradjselim/ruptura">GitHub</a> · <a href="/blog/">Blog</a>
-      <a href="https://docs.getruptura.dev/">Docs</a> · <a href="https://dev.to/selimbf">Blog</a> · <a href="https://github.com/benfradjselim/ruptura/discussions">Discussions</a></span>
+    <a class="logo" href="/"><svg viewBox="0 0 38 16" aria-hidden="true"><path d="M1 5 H17"/><path class="crack" d="M17 5 L21 11"/><path d="M21 11 H37"/></svg>Ruptura</a>
+    <span>Open source under Apache 2.0. Runs in your cluster; your telemetry never leaves it.</span>
+    <span class="links"><a href="https://github.com/benfradjselim/ruptura">GitHub</a><a href="https://docs.getruptura.dev/">Docs</a><a href="/blog/">Blog</a><a href="https://dev.to/selimbf">dev.to</a><a href="https://github.com/benfradjselim/ruptura/discussions">Discussions</a></span>
   </div>
 </footer>
-
 <script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <script>document.querySelectorAll("video[controls]").forEach(function(v){v.addEventListener("play",function(){if(window.goatcounter&&goatcounter.count&&!v.dataset.c){v.dataset.c=1;goatcounter.count({path:"play-"+v.querySelector("source").getAttribute("src"),title:"video play",event:true})}})});</script>
 </body>
