@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Container killed by OOM again and again: how to detect it in Kubernetes and OpenShift</title><meta name="description" content="Repeated OOM kills, Kubernetes holds the container in CrashLoopBackOff. How to detect it, whether it can be predicted, what it hits next and what to do."><link rel="canonical" href="https://getruptura.dev/failures/oom-crash-loop/">
+<meta property="og:title" content="Container killed by OOM again and again: how to detect it in Kubernetes and OpenShift"><meta property="og:description" content="Repeated OOM kills, Kubernetes holds the container in CrashLoopBackOff. How to detect it, whether it can be predicted, what it hits next and what to do."><meta property="og:url" content="https://getruptura.dev/failures/oom-crash-loop/"><meta property="og:image" content="https://getruptura.dev/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/favicon.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Container killed by OOM again and again", "description": "Repeated OOM kills, Kubernetes holds the container in CrashLoopBackOff. How to detect it, whether it can be predicted, what it hits next and what to do.", "url": "https://getruptura.dev/failures/oom-crash-loop/", "author": {"@type": "Person", "name": "Selim Benfradj"}, "publisher": {"@type": "Organization", "name": "Ruptura", "url": "https://getruptura.dev/"}}</script>
+<style>
+:root{--bg:#f4f5f2;--fg:#18222b;--muted:#4a5763;--line:#d6dad6;--acc:#8a6400;--soft:#ffffff}
+@media (prefers-color-scheme:dark){:root{--bg:#11181e;--fg:#e8ecee;--muted:#a3afb8;--line:#26323c;--acc:#f5c02e;--soft:#17212a;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:"Schibsted Grotesk","Helvetica Neue",Arial,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--acc)}nav{border-bottom:1px solid var(--line)}nav .w{display:flex;align-items:center;gap:10px;height:60px}
+nav a.brand{display:flex;gap:8px;align-items:center;font-weight:700;color:var(--fg);text-decoration:none}nav img{width:26px;height:26px}nav .r{margin-left:auto;display:flex;gap:18px;font-size:15px}nav .r a{color:var(--muted);text-decoration:none}
+.w{max-width:760px;margin:0 auto;padding:0 20px}h1{font-size:clamp(30px,5vw,42px);line-height:1.15;letter-spacing:-.02em;margin:40px 0 10px}
+.meta{color:var(--muted);font-size:14px;margin-bottom:30px}h2{margin-top:40px;font-size:26px;letter-spacing:-.01em}
+pre,.codehilite{border-radius:10px;overflow-x:auto;font-size:13.5px;line-height:1.5}.codehilite pre{padding:16px;margin:0}
+code{font-family:"Martian Mono",ui-monospace,Menlo,monospace;font-size:.92em;font-size:.92em}p code,li code{background:var(--soft);padding:2px 6px;border-radius:6px}
+.yt{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000;margin:20px 0}.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+code,pre{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}main pre,.codehilite{max-width:100%;overflow-x:auto}main{overflow-wrap:anywhere;min-width:0}table{border-collapse:collapse;width:100%;font-size:15px;margin:16px 0;display:block;overflow-x:auto}th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}th{background:var(--soft)}td,th{overflow-wrap:normal;word-break:normal}table code{white-space:nowrap}hr{border:0;border-top:1px solid var(--line);margin:40px 0}footer{color:var(--muted);font-size:14px;padding:40px 0 60px}
+.cta{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:20px;margin:30px 0}
+.brand .mark{width:34px;height:14px}.brand .mark path{fill:none;stroke:var(--fg);stroke-width:3}.brand .mark .crack{stroke:#f0b400}h1,h2,h3{letter-spacing:-.02em}a{text-decoration-color:#f0b400;text-underline-offset:3px}</style><style>.badge{display:inline-block;font-size:13px;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid var(--line);background:var(--soft)}
+.y{color:#1d7a3a}.p{color:#9a6a00}.n{color:var(--muted)}@media (prefers-color-scheme:dark){.y{color:#5fd08a}.p{color:#f5c02e}}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:22px 0}.facts div{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.facts b{display:block;font-size:13px;color:var(--muted);font-weight:600}td a{text-decoration:none}.lvl{margin-top:34px}</style></head><body>
+<nav><div class="w"><a class="brand" href="/"><svg class="mark" viewBox="0 0 38 16" aria-hidden="true"><path d="M1 5 H17"/><path class="crack" d="M17 5 L21 11"/><path d="M21 11 H37"/></svg>Ruptura</a><div class="r"><a href="/failures/">Failures</a><a href="/blog/">Blog</a><a href="https://docs.getruptura.dev/">Docs</a><a data-goatcounter-click="blog-github" href="https://github.com/benfradjselim/ruptura">GitHub</a></div></div></nav>
+<main class="w"><article><p class="meta"><a href="/failures/">Failure catalog</a> · container level</p>
+<h1>Container killed by OOM again and again</h1>
+<p>Repeated OOM kills, Kubernetes holds the container in CrashLoopBackOff.</p>
+<div class="facts"><div><b>Impact</b>The workload is down most of the time</div><div><b>Can it be seen coming?</b><span class="badge y">Yes</span></div><div><b>Ruptura</b>Covered</div></div>
+<h2>How to detect it</h2>
+<p>CrashLoopBackOff with OOMKilled as last termination reason.</p><p>Metrics and signals to watch:</p><ul><li><code>kube_pod_container_status_restarts_total</code></li><li><code>kube_pod_container_status_last_terminated_reason</code></li></ul>
+<h2>Can you see it coming?</h2>
+<p><span class="badge y">Yes</span> Precursor: Regular interval between kills.</p>
+<h2>What it hits next</h2><p>callers of the workload.</p>
+<h2>What to do</h2><p>Raise the memory limit or find the memory spike before the next kill.</p>
+<h2>Sources</h2><ul><li>kubernetes-mixin KubePodCrashLooping</li></ul>
+<h2>Where Ruptura stands</h2><p>Ruptura reports this failure as the <code>recurrent_failure</code> failure mode. A pre-registered lab test is not published yet.</p>
+<h2>Related failures</h2><ul><li><a href="/failures/memory-leak-to-oom/">Memory leak ends in an OOM kill</a></li><li><a href="/failures/accelerating-memory-growth/">Memory growth accelerates toward the limit</a></li><li><a href="/failures/sudden-memory-spike/">Sudden memory jump past the limit</a></li><li><a href="/failures/crash-loop/">Container crashes at start, again and again</a></li><li><a href="/failures/recurrent-failure/">Failures that come back at a regular interval</a></li></ul>
+<p class="meta">This card is part of an open catalog of 66 Kubernetes and OpenShift failures. <a href="https://github.com/benfradjselim/ruptura/tree/main/failures">Correct it or add one on GitHub</a>.</p>
+<div class="cta"><b>See it coming instead of reading about it</b><br><a href="/">Ruptura</a> is an open-source operator for Kubernetes and OpenShift that predicts the failures in this catalog that can be predicted, detects the others, and sends them to Alertmanager. <a data-goatcounter-click="failure-cta" href="/#live">Watch an OOM crash predicted 21 minutes early</a> · <a href="https://github.com/benfradjselim/ruptura">★ GitHub</a></div></article></main>
+<footer class="w">© 2026 Ruptura · Apache 2.0 · <a href="/">getruptura.dev</a> · <a href="https://github.com/benfradjselim/ruptura/tree/main/failures">Catalog source on GitHub</a></footer>
+<script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body></html>
