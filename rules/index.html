@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Predictive Prometheus alert rules for Kubernetes and OpenShift | Ruptura</title><meta name="description" content="Nine free Prometheus alert rules that fire before a Kubernetes failure: memory limits, full volumes and disks, inodes, node memory, conntrack, quotas, HPA ceiling and etcd quota."><link rel="canonical" href="https://getruptura.dev/rules/">
+<meta property="og:title" content="Predictive Prometheus alert rules for Kubernetes and OpenShift | Ruptura"><meta property="og:description" content="Nine free Prometheus alert rules that fire before a Kubernetes failure: memory limits, full volumes and disks, inodes, node memory, conntrack, quotas, HPA ceiling and etcd quota."><meta property="og:url" content="https://getruptura.dev/rules/"><meta property="og:image" content="https://getruptura.dev/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/favicon.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Predictive Prometheus alert rules for Kubernetes and OpenShift", "description": "Nine free Prometheus alert rules that fire before a Kubernetes failure: memory limits, full volumes and disks, inodes, node memory, conntrack, quotas, HPA ceiling and etcd quota.", "url": "https://getruptura.dev/rules/", "author": {"@type": "Person", "name": "Selim Benfradj"}}</script>
+<style>
+:root{--bg:#f4f5f2;--fg:#18222b;--muted:#4a5763;--line:#d6dad6;--acc:#8a6400;--soft:#ffffff}
+@media (prefers-color-scheme:dark){:root{--bg:#11181e;--fg:#e8ecee;--muted:#a3afb8;--line:#26323c;--acc:#f5c02e;--soft:#17212a;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:"Schibsted Grotesk","Helvetica Neue",Arial,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--acc)}nav{border-bottom:1px solid var(--line)}nav .w{display:flex;align-items:center;gap:10px;height:60px}
+nav a.brand{display:flex;gap:8px;align-items:center;font-weight:700;color:var(--fg);text-decoration:none}nav img{width:26px;height:26px}nav .r{margin-left:auto;display:flex;gap:18px;font-size:15px}nav .r a{color:var(--muted);text-decoration:none}
+.w{max-width:760px;margin:0 auto;padding:0 20px}h1{font-size:clamp(30px,5vw,42px);line-height:1.15;letter-spacing:-.02em;margin:40px 0 10px}
+.meta{color:var(--muted);font-size:14px;margin-bottom:30px}h2{margin-top:40px;font-size:26px;letter-spacing:-.01em}
+pre,.codehilite{border-radius:10px;overflow-x:auto;font-size:13.5px;line-height:1.5}.codehilite pre{padding:16px;margin:0}
+code{font-family:"Martian Mono",ui-monospace,Menlo,monospace;font-size:.92em;font-size:.92em}p code,li code{background:var(--soft);padding:2px 6px;border-radius:6px}
+.yt{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000;margin:20px 0}.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+code,pre{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}main pre,.codehilite{max-width:100%;overflow-x:auto}main{overflow-wrap:anywhere;min-width:0}table{border-collapse:collapse;width:100%;font-size:15px;margin:16px 0;display:block;overflow-x:auto}th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}th{background:var(--soft)}td,th{overflow-wrap:normal;word-break:normal}table code{white-space:nowrap}hr{border:0;border-top:1px solid var(--line);margin:40px 0}footer{color:var(--muted);font-size:14px;padding:40px 0 60px}
+.cta{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:20px;margin:30px 0}
+.brand .mark{width:34px;height:14px}.brand .mark path{fill:none;stroke:var(--fg);stroke-width:3}.brand .mark .crack{stroke:#f0b400}h1,h2,h3{letter-spacing:-.02em}a{text-decoration-color:#f0b400;text-underline-offset:3px}</style><style>.badge{display:inline-block;font-size:13px;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid var(--line);background:var(--soft)}
+.y{color:#1d7a3a}.p{color:#9a6a00}.n{color:var(--muted)}@media (prefers-color-scheme:dark){.y{color:#5fd08a}.p{color:#f5c02e}}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:22px 0}.facts div{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.facts b{display:block;font-size:13px;color:var(--muted);font-weight:600}td a{text-decoration:none}.lvl{margin-top:34px}</style><style>pre{background:#0d1117;color:#e6edf3;padding:16px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.5}</style></head><body>
+<nav><div class="w"><a class="brand" href="/"><svg class="mark" viewBox="0 0 38 16" aria-hidden="true"><path d="M1 5 H17"/><path class="crack" d="M17 5 L21 11"/><path d="M21 11 H37"/></svg>Ruptura</a><div class="r"><a href="/failures/">Failures</a><a href="/rules/">Rules</a><a href="/blog/">Blog</a><a href="https://docs.getruptura.dev/">Docs</a><a data-goatcounter-click="blog-github" href="https://github.com/benfradjselim/ruptura">GitHub</a></div></div></nav>
+<main class="w"><article><h1>Predictive alert rules for Kubernetes and OpenShift</h1>
+<p class="meta">9 rules · free to copy · Apache 2.0 · validated PromQL</p>
+<p>Most alert rules fire once something is already broken. These nine fire <b>before</b>: each one extrapolates a trend with <code>predict_linear</code> and warns while there is still time to act. Each links to its card in the <a href="/failures/">open failure catalog</a>.</p>
+<table><thead><tr><th>Alert</th><th>Fires when the resource is on track to</th><th>Card</th></tr></thead><tbody><tr><td><code>ContainerMemoryWillHitLimit</code></td><td>hit its memory limit within 30 minutes</td><td><a href="/failures/memory-leak-to-oom/">card</a></td></tr><tr><td><code>PersistentVolumeWillFillUp</code></td><td>fill up within 4 hours</td><td><a href="/failures/persistent-volume-filling/">card</a></td></tr><tr><td><code>NodeFilesystemWillFillUp</code></td><td>fill up within 24 hours</td><td><a href="/failures/node-filesystem-filling/">card</a></td></tr><tr><td><code>NodeInodesWillRunOut</code></td><td>run out of inodes within 24 hours</td><td><a href="/failures/inode-exhaustion/">card</a></td></tr><tr><td><code>NodeMemoryWillRunOut</code></td><td>drop below 5% available memory within 1 hour</td><td><a href="/failures/node-memory-pressure/">card</a></td></tr><tr><td><code>NodeConntrackTableWillFill</code></td><td>fill within 1 hour</td><td><a href="/failures/conntrack-table-full/">card</a></td></tr><tr><td><code>ResourceQuotaWillBeExhausted</code></td><td>be exhausted within 24 hours</td><td><a href="/failures/resource-quota-exhausted/">card</a></td></tr><tr><td><code>HPAWillReachMaxReplicas</code></td><td>reach its maximum replicas within 1 hour</td><td><a href="/failures/hpa-maxed-out/">card</a></td></tr><tr><td><code>EtcdDatabaseWillReachQuota</code></td><td>reach its database quota within 3 days</td><td><a href="/failures/etcd-database-quota/">card</a></td></tr></tbody></table>
+<h2>Install</h2>
+<p>Plain Prometheus: add the file to <code>rule_files</code>.</p>
+<pre><code>curl -sO https://getruptura.dev/rules/predictive-rules.yaml</code></pre>
+<p>Prometheus Operator, kube-prometheus or OpenShift: apply the <code>PrometheusRule</code> version in the namespace your Prometheus watches for rules.</p>
+<pre><code>curl -sO https://getruptura.dev/rules/predictive-prometheusrule.yaml
+kubectl apply -n monitoring -f predictive-prometheusrule.yaml</code></pre>
+<p>On OpenShift, the rules that read node, kubelet, kube-state-metrics or etcd metrics need the platform Prometheus to evaluate them, not user workload monitoring. Check where your cluster evaluates platform rules before applying them.</p>
+<h2>Know the limits</h2>
+<p>A straight line is a rough forecast. These rules can miss a leak that accelerates, and fire on a burst that would have flattened out. Tune the windows to your workloads. Thresholds such as 15% or 20% free match common community practice, including the kubernetes-mixin volume rule.</p>
+<p>Ruptura goes further: it names the failure, gives the time left with a window, shows the evidence and the services that go down with it, and compares each pod with its own history and its siblings. <a href="/#live">See an OOM crash predicted 21 minutes early</a>.</p>
+<h2>The rules</h2>
+<pre><code># Predictive alert rules for Kubernetes and OpenShift
+# From the open failure catalog: https://getruptura.dev/failures/
+# Each rule extrapolates a trend with predict_linear and fires before the failure, not after.
+# Free to copy and adapt (Apache 2.0). These are simple linear forecasts:
+# Ruptura (https://getruptura.dev) adds failure names, time-left windows, evidence and blast radius.
+groups:
+  - name: predictive-failures
+    rules:
+      - alert: ContainerMemoryWillHitLimit
+        expr: |
+          max by (namespace, pod, container) (predict_linear(container_memory_working_set_bytes{container!=&quot;&quot;, container!=&quot;POD&quot;}[30m], 30 * 60))
+          &gt; max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=&quot;memory&quot;})
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: &quot;{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is on track to hit its memory limit within 30 minutes&quot;
+          runbook_url: https://getruptura.dev/failures/memory-leak-to-oom/
+
+      - alert: PersistentVolumeWillFillUp
+        expr: |
+          predict_linear(kubelet_volume_stats_available_bytes[6h], 4 * 3600) &lt; 0
+          and kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes &lt; 0.15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: &quot;PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is on track to fill up within 4 hours&quot;
+          runbook_url: https://getruptura.dev/failures/persistent-volume-filling/
+
+      - alert: NodeFilesystemWillFillUp
+        expr: |
+          predict_linear(node_filesystem_avail_bytes{fstype!~&quot;tmpfs|overlay|squashfs&quot;}[6h], 24 * 3600) &lt; 0
+          and node_filesystem_avail_bytes{fstype!~&quot;tmpfs|overlay|squashfs&quot;} / node_filesystem_size_bytes{fstype!~&quot;tmpfs|overlay|squashfs&quot;} &lt; 0.2
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: &quot;{{ $labels.mountpoint }} on {{ $labels.instance }} is on track to fill up within 24 hours&quot;
+          runbook_url: https://getruptura.dev/failures/node-filesystem-filling/
+
+      - alert: NodeInodesWillRunOut
+        expr: |
+          predict_linear(node_filesystem_files_free{fstype!~&quot;tmpfs|overlay|squashfs&quot;}[6h], 24 * 3600) &lt; 0
+          and node_filesystem_files_free{fstype!~&quot;tmpfs|overlay|squashfs&quot;} / node_filesystem_files{fstype!~&quot;tmpfs|overlay|squashfs&quot;} &lt; 0.2
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: &quot;{{ $labels.mountpoint }} on {{ $labels.instance }} is on track to run out of inodes within 24 hours&quot;
+          runbook_url: https://getruptura.dev/failures/inode-exhaustion/
+
+      - alert: NodeMemoryWillRunOut
+        expr: |
+          predict_linear(node_memory_MemAvailable_bytes[1h], 3600) &lt; node_memory_MemTotal_bytes * 0.05
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: &quot;{{ $labels.instance }} is on track to drop below 5% available memory within 1 hour&quot;
+          runbook_url: https://getruptura.dev/failures/node-memory-pressure/
+
+      - alert: NodeConntrackTableWillFill
+        expr: |
+          predict_linear(node_nf_conntrack_entries[1h], 3600) &gt; node_nf_conntrack_entries_limit
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: &quot;The conntrack table on {{ $labels.instance }} is on track to fill within 1 hour&quot;
+          runbook_url: https://getruptura.dev/failures/conntrack-table-full/
+
+      - alert: ResourceQuotaWillBeExhausted
+        expr: |
+          max by (namespace, resourcequota, resource) (predict_linear(kube_resourcequota{type=&quot;used&quot;}[6h], 24 * 3600))
+          &gt; max by (namespace, resourcequota, resource) (kube_resourcequota{type=&quot;hard&quot;} &gt; 0)
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: &quot;Quota {{ $labels.resourcequota }} ({{ $labels.resource }}) in {{ $labels.namespace }} is on track to be exhausted within 24 hours&quot;
+          runbook_url: https://getruptura.dev/failures/resource-quota-exhausted/
+
+      - alert: HPAWillReachMaxReplicas
+        expr: |
+          predict_linear(kube_horizontalpodautoscaler_status_current_replicas[2h], 3600)
+          &gt;= kube_horizontalpodautoscaler_spec_max_replicas
+          and kube_horizontalpodautoscaler_status_current_replicas &lt; kube_horizontalpodautoscaler_spec_max_replicas
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: &quot;HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }} is on track to reach its maximum replicas within 1 hour&quot;
+          runbook_url: https://getruptura.dev/failures/hpa-maxed-out/
+
+      - alert: EtcdDatabaseWillReachQuota
+        expr: |
+          predict_linear(etcd_mvcc_db_total_size_in_bytes[24h], 3 * 24 * 3600) &gt; etcd_server_quota_backend_bytes
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: &quot;etcd on {{ $labels.instance }} is on track to reach its database quota within 3 days&quot;
+          runbook_url: https://getruptura.dev/failures/etcd-database-quota/
+</code></pre>
+<div class="cta"><b>Found a better rule?</b><br>Open an issue or a pull request on <a href="https://github.com/benfradjselim/ruptura">GitHub</a>. · <a data-goatcounter-click="rules-cta" href="/">getruptura.dev</a></div></article></main>
+<footer class="w">© 2026 Ruptura · Apache 2.0 · <a href="/">getruptura.dev</a></footer>
+<script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body></html>

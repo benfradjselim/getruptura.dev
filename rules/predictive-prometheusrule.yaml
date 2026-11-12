@@ -1,0 +1,103 @@
+# Predictive alert rules for Kubernetes and OpenShift
+# From the open failure catalog: https://getruptura.dev/failures/
+# Each rule extrapolates a trend with predict_linear and fires before the failure, not after.
+# Free to copy and adapt (Apache 2.0). These are simple linear forecasts:
+# Ruptura (https://getruptura.dev) adds failure names, time-left windows, evidence and blast radius.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: predictive-failures
+  labels:
+    app.kubernetes.io/part-of: ruptura-rules
+spec:
+  groups:
+  - name: predictive-failures
+    rules:
+    - alert: ContainerMemoryWillHitLimit
+      expr: |
+        max by (namespace, pod, container) (predict_linear(container_memory_working_set_bytes{container!="", container!="POD"}[30m], 30 * 60))
+        > max by (namespace, pod, container) (kube_pod_container_resource_limits{resource="memory"})
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: '{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is on track to hit its memory limit within 30 minutes'
+        runbook_url: https://getruptura.dev/failures/memory-leak-to-oom/
+    - alert: PersistentVolumeWillFillUp
+      expr: |
+        predict_linear(kubelet_volume_stats_available_bytes[6h], 4 * 3600) < 0
+        and kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.15
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is on track to fill up within 4 hours
+        runbook_url: https://getruptura.dev/failures/persistent-volume-filling/
+    - alert: NodeFilesystemWillFillUp
+      expr: |
+        predict_linear(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}[6h], 24 * 3600) < 0
+        and node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"} < 0.2
+      for: 30m
+      labels:
+        severity: warning
+      annotations:
+        summary: '{{ $labels.mountpoint }} on {{ $labels.instance }} is on track to fill up within 24 hours'
+        runbook_url: https://getruptura.dev/failures/node-filesystem-filling/
+    - alert: NodeInodesWillRunOut
+      expr: |
+        predict_linear(node_filesystem_files_free{fstype!~"tmpfs|overlay|squashfs"}[6h], 24 * 3600) < 0
+        and node_filesystem_files_free{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_files{fstype!~"tmpfs|overlay|squashfs"} < 0.2
+      for: 30m
+      labels:
+        severity: warning
+      annotations:
+        summary: '{{ $labels.mountpoint }} on {{ $labels.instance }} is on track to run out of inodes within 24 hours'
+        runbook_url: https://getruptura.dev/failures/inode-exhaustion/
+    - alert: NodeMemoryWillRunOut
+      expr: |
+        predict_linear(node_memory_MemAvailable_bytes[1h], 3600) < node_memory_MemTotal_bytes * 0.05
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: '{{ $labels.instance }} is on track to drop below 5% available memory within 1 hour'
+        runbook_url: https://getruptura.dev/failures/node-memory-pressure/
+    - alert: NodeConntrackTableWillFill
+      expr: |
+        predict_linear(node_nf_conntrack_entries[1h], 3600) > node_nf_conntrack_entries_limit
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: The conntrack table on {{ $labels.instance }} is on track to fill within 1 hour
+        runbook_url: https://getruptura.dev/failures/conntrack-table-full/
+    - alert: ResourceQuotaWillBeExhausted
+      expr: |
+        max by (namespace, resourcequota, resource) (predict_linear(kube_resourcequota{type="used"}[6h], 24 * 3600))
+        > max by (namespace, resourcequota, resource) (kube_resourcequota{type="hard"} > 0)
+      for: 30m
+      labels:
+        severity: info
+      annotations:
+        summary: Quota {{ $labels.resourcequota }} ({{ $labels.resource }}) in {{ $labels.namespace }} is on track to be exhausted within 24 hours
+        runbook_url: https://getruptura.dev/failures/resource-quota-exhausted/
+    - alert: HPAWillReachMaxReplicas
+      expr: |
+        predict_linear(kube_horizontalpodautoscaler_status_current_replicas[2h], 3600)
+        >= kube_horizontalpodautoscaler_spec_max_replicas
+        and kube_horizontalpodautoscaler_status_current_replicas < kube_horizontalpodautoscaler_spec_max_replicas
+      for: 15m
+      labels:
+        severity: info
+      annotations:
+        summary: HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }} is on track to reach its maximum replicas within 1 hour
+        runbook_url: https://getruptura.dev/failures/hpa-maxed-out/
+    - alert: EtcdDatabaseWillReachQuota
+      expr: |
+        predict_linear(etcd_mvcc_db_total_size_in_bytes[24h], 3 * 24 * 3600) > etcd_server_quota_backend_bytes
+      for: 1h
+      labels:
+        severity: warning
+      annotations:
+        summary: etcd on {{ $labels.instance }} is on track to reach its database quota within 3 days
+        runbook_url: https://getruptura.dev/failures/etcd-database-quota/
