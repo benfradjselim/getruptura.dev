@@ -229,13 +229,38 @@ body { margin: 0; }
 footer .links { display: flex; gap: 18px; flex-wrap: wrap; }
 footer .links a { text-decoration: none; }
 footer .links a:hover { color: var(--ink); }
+
+/* Mobile header: opaque, one line, links behind a menu button. */
+.menu-btn { display: none; }
+@media (max-width: 780px) {
+  .nav { background: var(--bg); backdrop-filter: none; padding-block: 10px; }
+  .nav .wrap { flex-wrap: nowrap; gap: 12px; }
+  .nav .logo { margin-right: auto; }
+  .nav .btn.primary { padding: 9px 14px; font-size: 14px; }
+  .menu-btn { display: inline-flex; flex-direction: column; justify-content: center; gap: 4px; width: 40px; height: 40px; padding: 0 9px; background: transparent; border: 1px solid var(--line); border-radius: 0; cursor: pointer; order: 3; }
+  .menu-btn span { display: block; height: 2px; background: var(--ink); }
+  .nav ul { display: none; position: absolute; left: 0; right: 0; top: 100%; flex-direction: column; gap: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 4px 20px 12px; }
+  .nav.open ul { display: flex; }
+  .nav ul a { display: block; padding: 12px 0; font-size: 16px; border-top: 1px solid var(--line); }
+}
+.shot-bar { overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.shot-bar::-webkit-scrollbar { display: none; }
+.diagram { overflow-x: auto; max-width: 100%; }
+.install > * { min-width: 0; }
+.install pre, .install code { max-width: 100%; }
+.install pre { overflow-x: auto; }
+main .wrap > *, main .wrap > * > * { min-width: 0; }
+pre { max-width: 100%; overflow-x: auto; }
+.alts > * { min-width: 0; }
+@media (max-width: 780px) { .alts { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>
 <header class="nav">
   <div class="wrap">
     <a class="logo" href="/" aria-label="Ruptura home"><svg viewBox="0 0 38 16" aria-hidden="true"><path d="M1 5 H17"/><path class="crack" d="M17 5 L21 11"/><path d="M21 11 H37"/></svg>Ruptura</a>
-    <ul>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Menu"><span></span><span></span><span></span></button>
+    <ul id="nav-links">
       <li><a href="#night">How it works</a></li>
       <li><a href="#modes">Failure modes</a></li>
       <li><a href="#measured">Benchmark</a></li>
@@ -485,5 +510,6 @@ oc apply -f https://raw.githubusercontent.com/benfradjselim/\
 </footer>
 <script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <script>document.querySelectorAll("video[controls]").forEach(function(v){v.addEventListener("play",function(){if(window.goatcounter&&goatcounter.count&&!v.dataset.c){v.dataset.c=1;goatcounter.count({path:"play-"+v.querySelector("source").getAttribute("src"),title:"video play",event:true})}})});</script>
+<script>(function(){var n=document.querySelector(".nav"),b=n&&n.querySelector(".menu-btn");if(!b)return;b.addEventListener("click",function(){var o=n.classList.toggle("open");b.setAttribute("aria-expanded",o?"true":"false")});n.querySelectorAll("ul a").forEach(function(a){a.addEventListener("click",function(){n.classList.remove("open");b.setAttribute("aria-expanded","false")})})})();</script>
 </body>
 </html>
