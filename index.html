@@ -304,7 +304,7 @@ pre { max-width: 100%; overflow-x: auto; }
             <div><h3>inventory</h3><p class="ns">boutique / Deployment</p>
               <svg class="spark" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><path d="M0 33 L22 32 L70 25 L140 14 L170 10" stroke="#e4e9ec" stroke-width="1.6" fill="none"/><path d="M170 10 L200 1" stroke="#f0b400" stroke-width="1.6" stroke-dasharray="3 3" fill="none"/><path d="M0 1 H200" stroke="#2b3743" stroke-width="1" fill="none"/></svg>
             </div>
-            <div class="why"><p><strong>OOM kill</strong> · window 21 to 25 min</p><p>Memory at 30% of its 256 Mi limit, rising about 8 Mi a minute. Can hit checkout, frontend.</p></div>
+            <div class="why"><p><strong>Saturation</strong> · OOM kill in 22 min, window 21 to 25</p><p>Memory at 30% of its 256 Mi limit, rising about 8 Mi a minute. Can hit checkout, frontend.</p></div>
           </div>
           <div class="row">
             <div class="t"><b>now</b><span>detected</span></div>
@@ -332,7 +332,7 @@ pre { max-width: 100%; overflow-x: auto; }
       <div class="night">
         <ol>
           <li><time class="mono">23:19:58</time><p><strong>Leak starts</strong> in inventory, 2 MiB every 15 s. Dashboards stay green.</p></li>
-          <li class="r"><time class="mono">23:29:56</time><p><strong>Ruptura names it.</strong> OOM kill in 22 min 18 s, window 21 to 25 min, callers at risk.</p></li>
+          <li class="r"><time class="mono">23:29:56</time><p><strong>Ruptura names it.</strong> Saturation: OOM kill in 22 min 18 s, window 21 to 25 min, callers at risk.</p></li>
           <li class="r"><time class="mono">23:30:30</time><p><strong>Alert in the cluster.</strong> RupturaFailurePredicted fires in Alertmanager, with the time left.</p></li>
           <li><time class="mono">23:51:44</time><p><strong>The kill lands</strong> 21 min 48 s after the forecast, inside its window.</p></li>
         </ol>
@@ -409,7 +409,7 @@ pre { max-width: 100%; overflow-x: auto; }
         <h2 class="title" style="margin-bottom:22px">Nothing new to run on your workloads.</h2>
         <ul class="points">
           <li><b>Reads what you have</b><span>The cluster's Prometheus or Thanos and the Kubernetes API. No sidecar, no agent, no code change.</span></li>
-          <li><b>Speaks where you look</b><span>Native alerts in Alertmanager and the OpenShift console, its own console, and a REST API.</span></li>
+          <li><b>Speaks where you look</b><span>Native alerts in Alertmanager, its own console and a REST API; the OpenShift console plugin ships in the next release.</span></li>
           <li><b>Knows who calls whom</b><span>Builds the call graph from Services, Routes and env, and names the callers a failure can take down.</span></li>
         </ul>
       </div>
@@ -420,20 +420,23 @@ pre { max-width: 100%; overflow-x: auto; }
     <div class="wrap">
       <div class="sec-head">
         <div><p class="label">Measured, losses included</p><h2 class="title">Against the rules teams write today.</h2></div>
-        <p>Six hours on our OpenShift lab on 9 November, pre-registered before any data. The opponent is <span class="mono">predict_linear</span> over 30 minutes on the same metrics.</p>
+        <p>Twelve hours on our OpenShift 4.22 lab on 16 November, plus targeted runs on 13 and 14 November, with rules and criteria published before any data. The opponent is the rule teams already run: <span class="mono">predict_linear</span> on the same metrics.</p>
       </div>
       <div class="bench">
         <table>
           <thead><tr><th>Measure</th><th>Ruptura</th><th>predict_linear</th><th>Result</th></tr></thead>
           <tbody>
-            <tr><td>Memory trends warned before the kill</td><td class="n">18 of 32</td><td class="n">17 of 32</td><td><span class="verdict win">Ahead</span></td></tr>
-            <tr><td>Median warning time</td><td class="n">17.1 min</td><td class="n">7.0 min</td><td><span class="verdict win">10 min earlier</span></td></tr>
-            <tr><td>Periodic spike, no trend to follow</td><td class="n">6 of 6</td><td class="n">0 of 6</td><td><span class="verdict win">Only one to warn</span></td></tr>
-            <tr class="loss"><td>False warnings on the cluster</td><td class="n">6</td><td class="n">0</td><td><span class="verdict lose">Behind</span></td></tr>
+            <tr><td>Memory leaks warned before the kill</td><td class="n">65 of 73</td><td class="n">38 of 73</td><td><span class="verdict win">Ahead</span></td></tr>
+            <tr><td>Median warning time</td><td class="n">15.4 min</td><td class="n">7.0 min</td><td><span class="verdict win">Twice as early</span></td></tr>
+            <tr><td>False alarms in 12 h</td><td class="n">0</td><td class="n">0, or 67 when tuned fast</td><td><span class="verdict win">None</span></td></tr>
+            <tr><td>Spike every 45 min, no trend to follow</td><td class="n">14 of 14</td><td class="n">0 of 14</td><td><span class="verdict win">Only one to warn</span></td></tr>
+            <tr><td>Pod that cannot start (crash loop, image, mount)</td><td class="n">18 to 35 s</td><td class="n">16 to 18 min</td><td><span class="verdict win">Minutes earlier</span></td></tr>
+            <tr class="loss"><td>New release that leaks fast, warned after rollout</td><td class="n">11 to 12 min</td><td class="n">1 to 2 min</td><td><span class="verdict lose">Behind</span></td></tr>
+            <tr class="loss"><td>Failures given the right name</td><td class="n">4 of 6</td><td class="n">—</td><td><span class="verdict lose">2 named wrong</span></td></tr>
           </tbody>
         </table>
       </div>
-      <p class="bench-note">The full benchmark (prediction, detection, quiet hours, resources, configuration effort) runs on 16 November and is published as measured, wins and losses alike.</p>
+      <p class="bench-note">Published as measured, wins and losses alike: <a data-goatcounter-click="home-bench-report" href="/blog/ruptura-benchmark-predict-linear/">the full report</a> · <a data-goatcounter-click="home-bench-github" href="https://github.com/benfradjselim/ruptura/tree/main/benchmark">scripts, rules and raw outputs</a>. Rerun it on your own cluster.</p>
     </div>
   </section>
 
