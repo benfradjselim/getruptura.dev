@@ -419,7 +419,7 @@ pre { max-width: 100%; overflow-x: auto; }
   <section id="measured" style="padding-top:24px">
     <div class="wrap">
       <div class="sec-head">
-        <div><p class="label">Measured, losses included</p><h2 class="title">Against the rules teams write today.</h2></div>
+        <div><p class="label">Measured, losses included</p><h2 class="title">Against the rules teams write today.</h2><video class="bench-video" controls playsinline preload="metadata" poster="/video/ruptura-benchmark-poster.jpg" style="display:block;width:100%;max-width:420px;margin:24px auto;background:#000"><source src="/video/ruptura-benchmark.mp4" type="video/mp4"></video></div>
         <p>Twelve hours on our OpenShift 4.22 lab on 16 November, plus targeted runs on 13 and 14 November, with rules and criteria published before any data. The opponent is the rule teams already run: <span class="mono">predict_linear</span> on the same metrics.</p>
       </div>
       <div class="bench">
@@ -430,7 +430,7 @@ pre { max-width: 100%; overflow-x: auto; }
             <tr><td>Median warning time</td><td class="n">15.4 min</td><td class="n">7.0 min</td><td><span class="verdict win">Twice as early</span></td></tr>
             <tr><td>False alarms in 12 h</td><td class="n">0</td><td class="n">0, or 67 when tuned fast</td><td><span class="verdict win">None</span></td></tr>
             <tr><td>Spike every 45 min, no trend to follow</td><td class="n">14 of 14</td><td class="n">0 of 14</td><td><span class="verdict win">Only one to warn</span></td></tr>
-            <tr><td>Pod that cannot start (crash loop, image, mount)</td><td class="n">18 to 35 s</td><td class="n">16 to 18 min</td><td><span class="verdict win">Minutes earlier</span></td></tr>
+            <tr><td>Pod that cannot start (crash loop, image, mount), vs the OpenShift alert rules</td><td class="n">18 to 35 s</td><td class="n">16 to 18 min</td><td><span class="verdict win">Minutes earlier</span></td></tr>
             <tr class="loss"><td>New release that leaks fast, warned after rollout</td><td class="n">11 to 12 min</td><td class="n">1 to 2 min</td><td><span class="verdict lose">Behind</span></td></tr>
             <tr class="loss"><td>Failures given the right name</td><td class="n">4 of 6</td><td class="n">—</td><td><span class="verdict lose">2 named wrong</span></td></tr>
           </tbody>
