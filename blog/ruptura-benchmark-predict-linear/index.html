@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>We tried to predict Kubernetes failures before they happen. Here is every result, including the losses. | Ruptura</title><meta name="description" content="A pre-registered benchmark of Kubernetes failure prediction against Prometheus predict_linear on a real OpenShift cluster: 15 min vs 7 min ahead with no false alarm, and every loss published."><link rel="canonical" href="https://getruptura.dev/blog/ruptura-benchmark-predict-linear/">
+<meta property="og:title" content="We tried to predict Kubernetes failures before they happen. Here is every result, including the losses."><meta property="og:description" content="A pre-registered benchmark of Kubernetes failure prediction against Prometheus predict_linear on a real OpenShift cluster: 15 min vs 7 min ahead with no false alarm, and every loss published."><meta property="og:url" content="https://getruptura.dev/blog/ruptura-benchmark-predict-linear/"><meta property="og:type" content="article"><meta property="og:image" content="https://getruptura.dev/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/favicon.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "We tried to predict Kubernetes failures before they happen. Here is every result, including the losses.", "description": "A pre-registered benchmark of Kubernetes failure prediction against Prometheus predict_linear on a real OpenShift cluster: 15 min vs 7 min ahead with no false alarm, and every loss published.", "author": {"@type": "Person", "name": "Selim Benfradj"}, "datePublished": "2026-11-17", "publisher": {"@type": "Organization", "name": "Ruptura", "url": "https://getruptura.dev"}, "mainEntityOfPage": "https://getruptura.dev/blog/ruptura-benchmark-predict-linear/", "image": "https://getruptura.dev/og.png"}</script>
+<style>
+:root{--bg:#f4f5f2;--fg:#18222b;--muted:#4a5763;--line:#d6dad6;--acc:#8a6400;--soft:#ffffff}
+@media (prefers-color-scheme:dark){:root{--bg:#11181e;--fg:#e8ecee;--muted:#a3afb8;--line:#26323c;--acc:#f5c02e;--soft:#17212a;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:"Schibsted Grotesk","Helvetica Neue",Arial,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--acc)}nav{border-bottom:1px solid var(--line)}nav .w{display:flex;align-items:center;gap:10px;height:60px}
+nav a.brand{display:flex;gap:8px;align-items:center;font-weight:700;color:var(--fg);text-decoration:none}nav img{width:26px;height:26px}nav .r{margin-left:auto;display:flex;gap:18px;font-size:15px}nav .r a{color:var(--muted);text-decoration:none}
+.w{max-width:760px;margin:0 auto;padding:0 20px}h1{font-size:clamp(30px,5vw,42px);line-height:1.15;letter-spacing:-.02em;margin:40px 0 10px}
+.meta{color:var(--muted);font-size:14px;margin-bottom:30px}h2{margin-top:40px;font-size:26px;letter-spacing:-.01em}
+pre,.codehilite{border-radius:10px;overflow-x:auto;font-size:13.5px;line-height:1.5}.codehilite pre{padding:16px;margin:0}
+code{font-family:"Martian Mono",ui-monospace,Menlo,monospace;font-size:.92em;font-size:.92em}p code,li code{background:var(--soft);padding:2px 6px;border-radius:6px}
+.yt{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000;margin:20px 0}.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+code,pre{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}main pre,.codehilite{max-width:100%;overflow-x:auto}main{overflow-wrap:anywhere;min-width:0}table{border-collapse:collapse;width:100%;font-size:15px;margin:16px 0;display:block;overflow-x:auto}th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}th{background:var(--soft)}td,th{overflow-wrap:normal;word-break:normal}table code{white-space:nowrap}hr{border:0;border-top:1px solid var(--line);margin:40px 0}footer{color:var(--muted);font-size:14px;padding:40px 0 60px}
+.cta{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:20px;margin:30px 0}
+.brand .mark{width:34px;height:14px}.brand .mark path{fill:none;stroke:var(--fg);stroke-width:3}.brand .mark .crack{stroke:#f0b400}h1,h2,h3{letter-spacing:-.02em}a{text-decoration-color:#f0b400;text-underline-offset:3px}</style></head><body>
+<nav><div class="w"><a class="brand" href="/"><svg class="mark" viewBox="0 0 38 16" aria-hidden="true"><path d="M1 5 H17"/><path class="crack" d="M17 5 L21 11"/><path d="M21 11 H37"/></svg>Ruptura</a><div class="r"><a href="/blog/">Blog</a><a href="https://docs.getruptura.dev/">Docs</a><a data-goatcounter-click="blog-github" href="https://github.com/benfradjselim/ruptura">GitHub</a></div></div></nav>
+<main class="w"><article><h1>We tried to predict Kubernetes failures before they happen. Here is every result, including the losses.</h1><div class="meta">Selim Benfradj · November 17, 2026</div><p><strong>TL;DR</strong>
+- Ruptura is an open source engine (Apache 2.0) that forecasts Kubernetes and OpenShift failures and gives an estimated time of failure.
+- We compared it with what most teams already run: Prometheus <code>predict_linear</code> alert rules.
+- Every test was written down before its data existed. Losses are published like wins.
+- Headline: on a replica that leaks while its siblings stay healthy, Ruptura warned <strong>8 minutes</strong> after the leak started and <strong>57 minutes</strong> before the crash, against <strong>30 minutes</strong> for <code>predict_linear</code>, with <strong>0 false alarms</strong>.
+- Memory failures over 12 hours: Ruptura warned on 65 of 73 leak cycles with a median lead of <strong>15.4 minutes</strong>, against 38 of 73 and 7.0 minutes for the quiet <code>predict_linear</code> setting, with <strong>0 false alarms</strong> on its trend forecasts, and on <strong>14 of 14</strong> periodic spikes no trend rule saw.
+- Where it lost: a bad release that leaks fast (the rule warned earlier), two of six detection faults named under the wrong failure mode, and more findings than the rules on healthy workloads (real CPU throttling, but more of it).</p>
+<h2>Why this test</h2>
+<p>Every observability vendor says "predictive". Few show the numbers, and almost none show
+them against the free baseline a team already has. So we set ourselves one rule: Ruptura must
+beat a well-tuned <code>predict_linear</code> rule on the same cluster, the same faults, the same window,
+or we say it does not.</p>
+<h2>The setup</h2>
+<ul>
+<li>One OpenShift lab cluster, real workloads plus injected faults (memory leaks at several
+  speeds, a periodic spike, crash loops, missing images and mounts, CPU throttling, a stuck
+  rollout, a replica that diverges, a bad release).</li>
+<li>Ruptura 8.7.8, the published image, running with its default detection settings and
+  frozen from 11 November (no restart during any scored window).</li>
+<li>Opponent: two <code>predict_linear</code> settings on container memory against its limit, a quiet one
+  (30 min of history, 30 min ahead) and a fast one (10 min, 30 min), plus a rule set for the
+  detection faults with their own <code>for</code> delays.</li>
+<li>Rules written before the runs: what counts as a warning, what counts as false, how leads are
+  measured, when a run is void. A void run is rerun once with the same rules, never rescored.</li>
+</ul>
+<p>Scripts, rules and raw outputs: https://github.com/benfradjselim/ruptura/tree/main/benchmark
+(scripts published on 14 November, before the main benchmark day, byte-identical to the frozen versions).</p>
+<h2>Results</h2>
+<h3>1. Memory failures, 12 hours (part A)</h3>
+<table>
+<thead>
+<tr>
+<th>Contestant</th>
+<th>Trend leaks warned</th>
+<th>Median fresh lead</th>
+<th>Periodic spike</th>
+<th>False episodes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>predict_linear</code> 30m/30m</td>
+<td>38 of 73</td>
+<td>7.0 min</td>
+<td>0 of 14</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>predict_linear</code> 10m/30m</td>
+<td>73 of 73</td>
+<td>21.5 min</td>
+<td>0 of 14</td>
+<td>67 (61 on a healthy batch job)</td>
+</tr>
+<tr>
+<td>Ruptura, trend forecasts only</td>
+<td>65 of 73</td>
+<td>15.4 min</td>
+<td>0 of 14</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Ruptura with its failure memory</td>
+<td>73 of 73</td>
+<td>18.3 min</td>
+<td><strong>14 of 14</strong></td>
+<td>2</td>
+</tr>
+</tbody>
+</table>
+<p>Verdict against the criteria written in advance: C1 <strong>pass</strong> (as many cycles and at least 5 min more lead than the quiet rule), C2 <strong>pass</strong> (at most half the false episodes of the fast rule, at most 2 more than the quiet one), C3 <strong>pass</strong> (at least 60 % of periodic spikes).</p>
+<p>For an SRE: the quiet rule is calm but late, the fast rule is early but cries wolf 67 times in 12 hours on a healthy job. Ruptura sits where you want to be: earlier than the quiet rule, as calm, and it is the only one that sees a failure that comes back on a schedule. The fast rule still leads on plain trends; we say so.</p>
+<h3>2. A replica that diverges from its siblings (part F1, run 2026-11-13)</h3>
+<p>Three replicas, one starts leaking, three rounds.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Ruptura</th>
+<th><code>predict_linear</code> (both settings)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Warned after leak start</td>
+<td>7.6 to 8.1 min</td>
+<td>34.5 to 35.5 min</td>
+</tr>
+<tr>
+<td>Median lead before the OOM kill</td>
+<td><strong>57.2 min</strong></td>
+<td>29.8 min</td>
+</tr>
+<tr>
+<td>Named the leaking pod</td>
+<td>3 of 3</td>
+<td>per-pod rule</td>
+</tr>
+<tr>
+<td>False alarms</td>
+<td>0</td>
+<td>fired on 3 calm pods</td>
+</tr>
+</tbody>
+</table>
+<p>Why: Ruptura compares each pod with its own replicas, so a pod that grows while its siblings
+stay flat stands out long before it nears its limit. A trend on one series cannot see that.
+The same test run on Nov 4 gave the same picture (57.8 against 30.4 min).</p>
+<h3>3. A bad release (part F2)</h3>
+<p>A new version that leaks, rolled out beside a healthy version and a heavier but stable one,
+three rounds (run 2026-11-14). <strong>Ruptura lost this one on 2 of its 3 criteria.</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Ruptura</th>
+<th><code>predict_linear</code> (both settings)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Warned after the bad rollout</td>
+<td>11.2 to 12.2 min (criterion: within 15 min, met)</td>
+<td>1 to 2 min</td>
+</tr>
+<tr>
+<td>Median lead before the OOM kill</td>
+<td>55.2 min</td>
+<td><strong>64.8 min</strong></td>
+</tr>
+<tr>
+<td>False warnings</td>
+<td>about 14 min of false warnings (heavy rollouts, rollbacks)</td>
+<td>fired on 32 to 38 healthy pods</td>
+</tr>
+</tbody>
+</table>
+<p>What it means: a trend rule reacts to every new version's warm-up, so on a bad release it is
+first, and it is also wrong on almost every healthy rollout. Ruptura waits for evidence and
+catches the bad release within 12 minutes, but it was later than the rule here, and it still
+raised false warnings on the heavy version's warm-up and during rollbacks. Both are on our list.</p>
+<h3>4. Detection, 6 faults x 3 rounds (part B)</h3>
+<table>
+<thead>
+<tr>
+<th>Fault</th>
+<th>Ruptura median</th>
+<th>Rule median</th>
+<th>Expected mode 3 of 3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>crash loop</td>
+<td>35 s</td>
+<td>1093 s</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>image not found</td>
+<td>34 s</td>
+<td>968 s</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>missing mount</td>
+<td>18 s</td>
+<td>968 s</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>replicas unavailable</td>
+<td>1223 s</td>
+<td>968 s</td>
+<td><strong>no</strong> (listed as startup_stuck; loss stated before the run)</td>
+</tr>
+<tr>
+<td>CPU throttling</td>
+<td>742 s</td>
+<td>1015 s</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>OOM kill</td>
+<td>192 s</td>
+<td>667 s</td>
+<td><strong>no</strong> (flagged 8 min earlier, but as crash_loop or replicas_unavailable)</td>
+</tr>
+<tr>
+<td>stuck rollout</td>
+<td>16 to 123 s after Kubernetes marks it</td>
+<td></td>
+<td>yes, 4 of 4 criteria</td>
+</tr>
+</tbody>
+</table>
+<h3>5. Quiet, cost and setup (parts C, D, E)</h3>
+<ul>
+<li>Findings on healthy workloads in 12 h: Ruptura 8 on 3 workloads, rules 5 on 2. All 8 are real CPU throttling (37 % to 99.9 % of CPU periods throttled), so 0 false, but the criterion was "no more findings than the rules": <strong>fail</strong>.</li>
+<li>Engine: 46 millicores CPU on average (96 at peak), 442 MiB memory at peak, close to its 512 MiB limit; we are looking at it.</li>
+<li>What a user writes to cover their namespaces: without Ruptura, 1 PrometheusRule with 8 rules (53 lines) plus 2 cluster settings (user workload monitoring, an Alertmanager route); with Ruptura, one RupturaInstance of 22 lines, 3 of them optional (console plugin).</li>
+</ul>
+<h2>Where Ruptura lost, and what we are doing about it</h2>
+<ul>
+<li><strong>Bad release (F2):</strong> the rule warned about 10 minutes earlier, and Ruptura raised false warnings on a heavy version's warm-up and during rollbacks. Fix in progress, to be measured under a new pre-registered test.</li>
+<li><strong>Replicas unavailable:</strong> a Deployment with one unschedulable replica is named <code>startup_stuck</code> (the Pending pod), not <code>replicas_unavailable</code>, and 4 minutes later than the rule. We saw it in the dry run on 11 November and chose not to change the engine before the test.</li>
+<li><strong>OOM kill named wrong:</strong> Ruptura flagged the failing workload 8 minutes before the rule, but called it a crash loop. Detection is right, the label is not.</li>
+<li><strong>More findings on healthy workloads:</strong> all real CPU throttling, but more than the rules raise. Whether throttling at that level deserves a finding is a product question we will settle openly.</li>
+</ul>
+<p>Known limits we stated before the runs:
+- The lab's faults are regular, which flatters the failure memory. Real clusters are noisier.
+- The OOM rule has no <code>for</code> delay, so on OOM kill the best Ruptura can do is a tie.
+- 99 of 125 pods on this lab have no memory limit. Forecasting against a limit cannot cover
+  them yet; node memory pressure is next on the roadmap.</p>
+<h2>Try it on your cluster</h2>
+<ul>
+<li>OpenShift: OperatorHub, search "Ruptura" (https://operatorhub.io/operator/ruptura-operator).</li>
+<li>Kubernetes: Helm chart, see https://getruptura.dev.</li>
+<li>Demo video: https://youtu.be/sD1mMTWQgvY</li>
+<li>Code and issues: https://github.com/benfradjselim/ruptura</li>
+</ul>
+<p>If you run it and it misses a failure, open an issue with what happened. That is the most
+useful thing you can send us. We are also looking for a few teams who want to run it on real
+clusters with us: <a href="https://github.com/benfradjselim/ruptura/issues/new?template=early-adopter.yml">become an early adopter</a>.</p>
+<p>We will present this live at Red Hat Summit Paris on 24 November.</p><div class="cta"><b>Try Ruptura</b><br>Open source, for Kubernetes and OpenShift. <a data-goatcounter-click="blog-cta" href="/">getruptura.dev</a> · <a href="https://github.com/benfradjselim/ruptura">★ GitHub</a></div></article></main>
+<footer class="w">© 2026 Ruptura · Apache 2.0 · <a href="/">getruptura.dev</a></footer>
+<script data-goatcounter="https://getruptura.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body></html>
